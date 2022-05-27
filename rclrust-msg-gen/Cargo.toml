@@ -2,23 +2,16 @@
 name = "rclrust-msg-gen"
 version = "0.1.0"
 edition = "2021"
-authors = ["Yuma Hiramatsu <yuma.hiramatsu@gmail.com>"]
-
-description = "internal crate in rclrust-msg"
+authors = ["Jerry Lin <jerry73204@gmail.com>", "Yuma Hiramatsu <yuma.hiramatsu@gmail.com>"]
+description = "Macro for ROS IDL message generation"
 repository = "https://github.com/rclrust/rclrust"
 license = "Apache-2.0"
 
-workspace = ".."
-
-[dependencies]
-anyhow = "1.0"
-heck = "0.3"
-nom = "7"
-proc-macro2 = "1.0"
-quote = "1.0"
-regex = "1"
-syn = "1.0"
-thiserror = "1.0"
-
 [lib]
 proc-macro = true
+
+[dependencies]
+rclrust-msg-parse = { version = "0.1.0", path = "../rclrust-msg-parse" }
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = "1.0"

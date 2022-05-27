@@ -1,19 +1,7 @@
-#![warn(
-    rust_2018_idioms,
-    elided_lifetimes_in_paths,
-    clippy::all,
-    clippy::nursery
-)]
-
-mod parser;
-mod types;
-
 use std::path::Path;
 
 use proc_macro::TokenStream;
 use quote::quote;
-
-use crate::parser::get_packages;
 
 #[proc_macro]
 pub fn msg_include_all(_input: TokenStream) -> TokenStream {
@@ -25,11 +13,11 @@ pub fn msg_include_all(_input: TokenStream) -> TokenStream {
         .map(Path::new)
         .collect::<Vec<_>>();
 
-    let packages = get_packages(&paths)
+    let packages: Vec<_> = rclrust_msg_parse::get_packages(&paths)
         .unwrap()
         .iter()
         .map(|v| v.token_stream())
-        .collect::<Vec<_>>();
+        .collect();
 
     (quote! {
         #(#packages)*

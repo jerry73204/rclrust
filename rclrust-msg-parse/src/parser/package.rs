@@ -92,10 +92,10 @@ fn get_ros_msgs_each_package<P: AsRef<Path>>(root_dir: P) -> Result<Vec<Package>
     Ok(packages)
 }
 
-pub fn get_packages(paths: &[&Path]) -> Result<Vec<Package>> {
+pub fn get_packages(paths: &[impl AsRef<Path>]) -> Result<Vec<Package>> {
     let mut packages = paths
         .iter()
-        .map(|&path| get_ros_msgs_each_package(path))
+        .map(|path| get_ros_msgs_each_package(path.as_ref()))
         .collect::<Result<Vec<_>>>()?
         .into_iter()
         .flatten()
