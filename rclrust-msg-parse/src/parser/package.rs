@@ -4,106 +4,128 @@ use std::{
     path::Path,
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use itertools::Itertools as _;
+use path_macro::path;
 
 use super::{action::parse_action_file, message::parse_message_file, service::parse_service_file};
 use crate::types::Package;
 
 const ROSIDL_INTERFACES: &str = "share/ament_index/resource_index/rosidl_interfaces";
 
-const NAMESPACES: &[&str] = &["msg", "srv", "action"];
-
-fn parse_line(line: &str) -> Option<(&str, &str)> {
-    if !line.ends_with(".idl") {
-        return None;
-    }
-    for &namespace in NAMESPACES {
-        if line.starts_with(&format!("{}/", namespace)) {
-            let name = &line[namespace.len() + 1..line.len() - 4];
-            return Some((namespace, name));
-        }
-    }
-    println!("Unknown type: {:?}", line);
-    None
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Ns {
+    Msg,
+    Srv,
+    Action,
 }
 
-fn get_ros_msgs_each_package<P: AsRef<Path>>(root_dir: P) -> Result<Vec<Package>> {
-    let dir = root_dir.as_ref().join(ROSIDL_INTERFACES);
+struct IdlLine<'a> {
+    pub ns: Ns,
+    pub file_name: &'a str,
+    pub name: &'a str,
+}
 
-    let mut packages = Vec::new();
-
-    let paths = match fs::read_dir(dir) {
-        Ok(paths) => paths,
-        Err(_) => {
-            return Ok(packages);
-        }
-    };
-
-    for path in paths {
-        let path = path?.path();
-        let file_name = path
-            .clone()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
-        // Hack
-        if file_name == "libstatistics_collector" {
-            continue;
-        }
-
-        let mut package = Package::new(file_name.clone());
-        for line in BufReader::new(File::open(path)?).lines() {
-            match parse_line(&line?) {
-                Some(("msg", v)) => {
-                    let msg = parse_message_file(
-                        &file_name,
-                        root_dir
-                            .as_ref()
-                            .join(format!("share/{}/msg/{}.msg", file_name, v)),
-                    )?;
-                    package.messages.push(msg);
-                }
-                Some(("srv", v)) => {
-                    let srv = parse_service_file(
-                        &file_name,
-                        root_dir
-                            .as_ref()
-                            .join(format!("share/{}/srv/{}.srv", file_name, v)),
-                    )?;
-                    package.services.push(srv);
-                }
-                Some(("action", v)) => {
-                    let action = parse_action_file(
-                        &file_name,
-                        root_dir
-                            .as_ref()
-                            .join(format!("share/{}/action/{}.action", file_name, v)),
-                    )?;
-                    package.actions.push(action);
-                }
-                Some(_) => unreachable!(),
-                None => {}
-            }
-        }
-        packages.push(package);
+fn parse_line(line: &str) -> Result<Option<IdlLine>> {
+    if !line.ends_with(".idl") {
+        return Ok(None);
     }
+
+    let err = || anyhow!("Unknown type: {:?}", line);
+
+    let (ns_name, file_name) = line.split_once('/').ok_or_else(err)?;
+    let ns = match ns_name {
+        "msg" => Ns::Msg,
+        "srv" => Ns::Srv,
+        "action" => Ns::Action,
+        _ => return Err(err()),
+    };
+    let name = &file_name[..(file_name.len() - 4)];
+
+    Ok(Some(IdlLine {
+        ns,
+        file_name,
+        name,
+    }))
+}
+
+fn get_ros_msgs_each_package<P>(root_dir: P) -> Result<Vec<Package>>
+where
+    P: AsRef<Path>,
+{
+    let root_dir = root_dir.as_ref();
+    let share_dir = root_dir.join("share");
+    let idl_dir = root_dir.join(ROSIDL_INTERFACES);
+
+    let packages: Vec<_> = fs::read_dir(&idl_dir)?
+        .map(|entry| -> Result<Option<_>> {
+            let path = entry?.path();
+            let pkg_name: Option<&str> = (|| path.file_name()?.to_str())();
+
+            // Hack
+            let pkg_name = match pkg_name {
+                Some(name) if name == "libstatistics_collector" => return Ok(None),
+                Some(name) => name,
+                None => return Ok(None),
+            };
+
+            let mut lines = BufReader::new(File::open(&path)?).lines();
+
+            let package = lines.try_fold(
+                Package::new(pkg_name.to_string()),
+                |mut package, line| -> Result<_> {
+                    let line = line?;
+                    let IdlLine { ns, file_name, .. } = match parse_line(&line)? {
+                        Some(tuple) => tuple,
+                        None => return Ok(package),
+                    };
+
+                    match ns {
+                        Ns::Msg => {
+                            let msg = parse_message_file(
+                                pkg_name,
+                                path!(share_dir / &pkg_name / "msg" / file_name),
+                            )?;
+                            package.messages.push(msg);
+                        }
+                        Ns::Srv => {
+                            let srv = parse_service_file(
+                                pkg_name,
+                                path!(share_dir / &pkg_name / "srv" / file_name),
+                            )?;
+                            package.services.push(srv);
+                        }
+                        Ns::Action => {
+                            let action = parse_action_file(
+                                pkg_name,
+                                path!(share_dir / &pkg_name / "action" / file_name),
+                            )?;
+                            package.actions.push(action);
+                        }
+                    }
+
+                    Ok(package)
+                },
+            )?;
+
+            Ok(Some(package))
+        })
+        .flatten_ok()
+        .try_collect()?;
+
     Ok(packages)
 }
 
 pub fn get_packages(paths: &[impl AsRef<Path>]) -> Result<Vec<Package>> {
-    let mut packages = paths
+    let mut packages: Vec<_> = paths
         .iter()
         .map(|path| get_ros_msgs_each_package(path.as_ref()))
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .flatten()
-        .filter(|p| !p.is_empty())
-        .collect::<Vec<_>>();
+        .flatten_ok()
+        .filter(|p| if let Ok(p) = p { !p.is_empty() } else { true })
+        .try_collect()?;
 
-    packages.sort_by_key(|p| p.name.clone());
-    packages.dedup_by_key(|p| p.name.clone());
+    packages.sort_by(|lp, rp| lp.name.cmp(&rp.name));
+    packages.dedup_by(|lp, rp| lp.name == rp.name);
 
     Ok(packages)
 }
@@ -112,41 +134,25 @@ pub fn get_packages(paths: &[impl AsRef<Path>]) -> Result<Vec<Package>> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn parse_line_msg() {
-        let result = parse_line("msg/TestHoge.idl").unwrap();
-
-        assert_eq!(result.0, "msg");
-        assert_eq!(result.1, "TestHoge");
+    fn assert_line(path: &str, expect_ns: Ns, expect_name: &str) {
+        assert!(matches!(
+                parse_line(path),
+                Ok(Some(IdlLine{ns, name, ..}))
+                    if ns == expect_ns && name == expect_name));
     }
 
     #[test]
-    fn parse_line_srv() {
-        let result = parse_line("srv/TestHoge.idl").unwrap();
+    fn parse_line_test() {
+        assert_line("msg/TestHoge.idl", Ns::Msg, "TestHoge");
+        assert_line("srv/TestHoge.idl", Ns::Srv, "TestHoge");
+        assert_line("action/TestHoge.idl", Ns::Action, "TestHoge");
 
-        assert_eq!(result.0, "srv");
-        assert_eq!(result.1, "TestHoge");
-    }
+        assert!(matches!(parse_line("test/Test.msg"), Ok(None)));
+        assert!(matches!(parse_line("test/Test.srv"), Ok(None)));
+        assert!(matches!(parse_line("test/Test.action"), Ok(None)));
 
-    #[test]
-    fn parse_line_action() {
-        let result = parse_line("action/TestHoge.idl").unwrap();
-
-        assert_eq!(result.0, "action");
-        assert_eq!(result.1, "TestHoge");
-    }
-
-    #[test]
-    fn parse_line_wrong_namespace() {
-        assert!(parse_line("test/Test.msg").is_none());
-        assert!(parse_line("test/Test.srv").is_none());
-        assert!(parse_line("test/Test.action").is_none());
-    }
-
-    #[test]
-    fn parse_line_wrong_suffix() {
-        assert!(parse_line("msg/Test.test").is_none());
-        assert!(parse_line("srv/Test.test").is_none());
-        assert!(parse_line("action/Test.test").is_none());
+        assert!(matches!(parse_line("msg/Test.test"), Ok(None)));
+        assert!(matches!(parse_line("srv/Test.test"), Ok(None)));
+        assert!(matches!(parse_line("action/Test.test"), Ok(None)));
     }
 }
