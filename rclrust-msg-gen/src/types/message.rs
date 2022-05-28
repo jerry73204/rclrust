@@ -81,7 +81,7 @@ impl Member {
                 value_type: NestableType::BasicType(_),
                 ..
             }) => quote! { from.#name.clone() },
-            _ => quote! { _FFIFromRust::from_rust(&from.#name) },
+            _ => quote! { crate::_core::FFIFromRust::from_rust(&from.#name) },
         };
         quote! { #name: #value, }
     }
@@ -183,11 +183,8 @@ impl Message {
             use std::convert::TryInto as _;
             use std::os::raw::c_void;
 
-            use crate::_core::{
-                InternalDefault as _,
-                FFIFromRust as _FFIFromRust,
-                FFIToRust as _FFIToRust,
-            };
+            #[allow(unused_imports)]
+            use crate::_core::InternalDefault as _;
 
             #[allow(non_camel_case_types)]
             #[derive(std::fmt::Debug, std::clone::Clone, std::cmp::PartialEq)]

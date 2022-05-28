@@ -74,17 +74,25 @@ impl Package {
         }
     }
 
-    pub fn token_stream(&self) -> impl ToTokens {
+    pub fn token_stream(&self, body_only: bool) -> impl ToTokens {
         let name = Ident::new(&self.name, Span::call_site());
         let messages_block = self.messages_block();
         let services_block = self.services_block();
         let actions_block = self.actions_block();
 
-        quote! {
-            pub mod #name {
-                #messages_block
-                #services_block
-                #actions_block
+        let body = quote! {
+            #messages_block
+            #services_block
+            #actions_block
+        };
+
+        if body_only {
+            body
+        } else {
+            quote! {
+                pub mod #name {
+                    #body
+                }
             }
         }
     }

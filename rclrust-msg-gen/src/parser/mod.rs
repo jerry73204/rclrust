@@ -5,8 +5,7 @@ pub mod ident;
 pub mod literal;
 pub mod member;
 pub mod message;
-mod package;
+pub mod package;
 pub mod service;
 pub mod types;
-
-pub use package::get_packages;
+pub mod utils;

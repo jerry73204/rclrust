@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
 
-use super::{error::RclMsgError, message::parse_message_string};
+use super::{error::RclMsgError, message::parse_message_string, utils::fix_newlines};
 use crate::types::Action;
 
 const ACTION_GOAL_SUFFIX: &str = "_Goal";
@@ -29,6 +29,7 @@ fn parse_action_string(pkg_name: &str, action_name: &str, action_string: &str) -
         )
     };
 
+    let action_string = fix_newlines(action_string);
     let (block1, tail) = action_string.split_once("---\n").ok_or_else(err)?;
     let (block2, block3) = tail.split_once("---\n").ok_or_else(err)?;
 

@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
 
-use super::{error::RclMsgError, message::parse_message_string};
+use super::{error::RclMsgError, message::parse_message_string, utils::fix_newlines};
 use crate::types::Service;
 
 const SERVICE_REQUEST_SUFFIX: &str = "_Request";
@@ -13,7 +13,7 @@ where
     P: AsRef<Path>,
 {
     let interface_file = interface_file.as_ref();
-    let service_string = fs::read_to_string(interface_file)?.replace("\r\n", "\n");
+    let service_string = fs::read_to_string(interface_file)?;
 
     parse_service_string(
         pkg_name,
@@ -24,6 +24,8 @@ where
 }
 
 fn parse_service_string(pkg_name: &str, srv_name: &str, service_string: &str) -> Result<Service> {
+    let service_string = fix_newlines(service_string);
+
     let (block1, block2) = service_string.split_once("---\n").ok_or_else(|| {
         RclMsgError::InvalidServiceSpecification(format!(
             "Expect one '---' seperator in {}/{} service definition",
