@@ -1,7 +1,6 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use regex::Regex;
 
 use super::{error::RclMsgError, message::parse_message_string};
 use crate::types::Action;
@@ -10,29 +9,28 @@ const ACTION_GOAL_SUFFIX: &str = "_Goal";
 const ACTION_RESULT_SUFFIX: &str = "_Result";
 const ACTION_FEEDBACK_SUFFIX: &str = "_Feedback";
 
-pub fn parse_action_file<P: AsRef<Path>>(pkg_name: &str, interface_file: P) -> Result<Action> {
+pub fn parse_action_file<P>(pkg_name: &str, interface_file: P) -> Result<Action>
+where
+    P: AsRef<Path>,
+{
+    let interface_file = interface_file.as_ref();
     parse_action_string(
         pkg_name,
-        interface_file
-            .as_ref()
-            .file_stem()
-            .unwrap()
-            .to_str()
-            .unwrap(),
-        fs::read_to_string(interface_file.as_ref())?.as_str(),
+        interface_file.file_stem().unwrap().to_str().unwrap(),
+        fs::read_to_string(interface_file)?.as_str(),
     )
-    .with_context(|| format!("Parse file error: {}", interface_file.as_ref().display()))
+    .with_context(|| format!("Parse file error: {}", interface_file.display()))
 }
 
 fn parse_action_string(pkg_name: &str, action_name: &str, action_string: &str) -> Result<Action> {
-    let re = Regex::new(r"(?m)^---$").unwrap();
-    let action_blocks: Vec<_> = re.split(action_string).collect();
-    if action_blocks.len() != 3 {
-        return Err(RclMsgError::InvalidActionSpecification(
+    let err = || {
+        RclMsgError::InvalidActionSpecification(
             "Number of '---' separators nonconformant with action definition".into(),
         )
-        .into());
-    }
+    };
+
+    let (block1, tail) = action_string.split_once("---\n").ok_or_else(err)?;
+    let (block2, block3) = tail.split_once("---\n").ok_or_else(err)?;
 
     Ok(Action {
         package: pkg_name.into(),
@@ -40,17 +38,17 @@ fn parse_action_string(pkg_name: &str, action_name: &str, action_string: &str) -
         goal: parse_message_string(
             pkg_name,
             &format!("{}{}", action_name, ACTION_GOAL_SUFFIX),
-            action_blocks[0],
+            block1,
         )?,
         result: parse_message_string(
             pkg_name,
             &format!("{}{}", action_name, ACTION_RESULT_SUFFIX),
-            action_blocks[1],
+            block2,
         )?,
         feedback: parse_message_string(
             pkg_name,
             &format!("{}{}", action_name, ACTION_FEEDBACK_SUFFIX),
-            action_blocks[2],
+            block3,
         )?,
     })
 }

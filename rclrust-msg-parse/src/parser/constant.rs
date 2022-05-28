@@ -11,38 +11,41 @@ use super::{error::RclMsgError, ident, literal, types};
 use crate::types::{primitives::PrimitiveType, Constant, ConstantType};
 
 fn validate_value(r#type: ConstantType, value: &str) -> Result<Vec<String>> {
-    match r#type {
-        ConstantType::PrimitiveType(t) => match t {
+    use ConstantType as C;
+    use PrimitiveType as P;
+    use RclMsgError as E;
+
+    Ok(match r#type {
+        C::PrimitiveType(t) => match t {
             PrimitiveType::BasicType(t) => {
                 let (rest, value) = literal::get_basic_type_literal_parser(t)(value)
                     .map_err(|_| RclMsgError::ParseConstantValueError(value.into()))?;
                 ensure!(rest.is_empty());
-                Ok(vec![value])
+                vec![value]
             }
             PrimitiveType::GenericUnboundedString(t) => {
                 let (rest, default) = literal::get_string_literal_parser(t.into())(value)
                     .map_err(|_| RclMsgError::ParseDefaultValueError(value.into()))?;
                 ensure!(rest.is_empty());
-                Ok(vec![default])
+                vec![default]
             }
         },
-        ConstantType::PrimitiveArray(array_t) => match array_t.value_type {
-            PrimitiveType::BasicType(t) => {
+        C::PrimitiveArray(array_t) => match array_t.value_type {
+            P::BasicType(t) => {
                 let (rest, values) = literal::basic_type_sequence(t, value)
-                    .map_err(|_| RclMsgError::ParseDefaultValueError(value.into()))?;
+                    .map_err(|_| E::ParseDefaultValueError(value.into()))?;
                 ensure!(rest.is_empty());
                 ensure!(values.len() == array_t.size);
-
-                Ok(values)
+                values
             }
-            PrimitiveType::GenericUnboundedString(_) => {
+            P::GenericUnboundedString(_) => {
                 let (rest, values) = literal::string_literal_sequence(value)
-                    .map_err(|_| RclMsgError::ParseDefaultValueError(value.into()))?;
+                    .map_err(|_| E::ParseDefaultValueError(value.into()))?;
                 ensure!(rest.is_empty());
-                Ok(values)
+                values
             }
         },
-    }
+    })
 }
 
 pub fn constant_def(line: &str) -> Result<Constant> {

@@ -11,66 +11,66 @@ use super::{error::RclMsgError, ident, literal, types};
 use crate::types::{primitives::NestableType, Member, MemberType};
 
 fn nestable_type_default(nestable_type: NestableType, default: &str) -> Result<Vec<String>> {
-    match nestable_type {
-        NestableType::BasicType(t) => {
+    use NestableType as N;
+    use RclMsgError as E;
+
+    Ok(match nestable_type {
+        N::BasicType(t) => {
             let (rest, default) = literal::get_basic_type_literal_parser(t)(default)
-                .map_err(|_| RclMsgError::ParseDefaultValueError(default.into()))?;
+                .map_err(|_| E::ParseDefaultValueError(default.into()))?;
             ensure!(rest.is_empty());
-            Ok(vec![default])
+            vec![default]
         }
-        NestableType::NamedType(t) => {
-            Err(RclMsgError::InvalidDefaultError(format!("{}", t)).into())
-        }
-        NestableType::NamespacedType(t) => {
-            Err(RclMsgError::InvalidDefaultError(format!("{}", t)).into())
-        }
-        NestableType::GenericString(t) => {
+        N::GenericString(t) => {
             let (rest, default) = literal::get_string_literal_parser(t)(default)
-                .map_err(|_| RclMsgError::ParseDefaultValueError(default.into()))?;
+                .map_err(|_| E::ParseDefaultValueError(default.into()))?;
             ensure!(rest.is_empty());
-            Ok(vec![default])
+            vec![default]
         }
-    }
+        N::NamedType(t) => return Err(E::InvalidDefaultError(t.to_string()).into()),
+        N::NamespacedType(t) => return Err(E::InvalidDefaultError(t.to_string()).into()),
+    })
 }
 
 fn array_type_default(value_type: NestableType, default: &str) -> Result<Vec<String>> {
-    match value_type {
-        NestableType::BasicType(t) => {
+    use NestableType as N;
+    use RclMsgError as E;
+
+    Ok(match value_type {
+        N::BasicType(t) => {
             let (rest, default) = literal::basic_type_sequence(t, default)
-                .map_err(|_| RclMsgError::ParseDefaultValueError(default.into()))?;
+                .map_err(|_| E::ParseDefaultValueError(default.into()))?;
             ensure!(rest.is_empty());
-            Ok(default)
+            default
         }
-        NestableType::NamedType(t) => {
-            Err(RclMsgError::InvalidDefaultError(format!("{}", t)).into())
-        }
-        NestableType::NamespacedType(t) => {
-            Err(RclMsgError::InvalidDefaultError(format!("{}", t)).into())
-        }
-        NestableType::GenericString(_) => {
+        N::NamedType(t) => return Err(E::InvalidDefaultError(t.to_string()).into()),
+        N::NamespacedType(t) => return Err(E::InvalidDefaultError(t.to_string()).into()),
+        N::GenericString(_) => {
             let (rest, default) = literal::string_literal_sequence(default)
-                .map_err(|_| RclMsgError::ParseDefaultValueError(default.into()))?;
+                .map_err(|_| E::ParseDefaultValueError(default.into()))?;
             ensure!(rest.is_empty());
-            Ok(default)
+            default
         }
-    }
+    })
 }
 
 fn validate_default(r#type: MemberType, default: &str) -> Result<Vec<String>> {
-    match r#type {
-        MemberType::NestableType(t) => nestable_type_default(t, default),
-        MemberType::Array(t) => {
+    use MemberType as M;
+
+    Ok(match r#type {
+        M::NestableType(t) => nestable_type_default(t, default)?,
+        M::Array(t) => {
             let default = array_type_default(t.value_type, default)?;
             ensure!(default.len() == t.size);
-            Ok(default)
+            default
         }
-        MemberType::Sequence(t) => array_type_default(t.value_type, default),
-        MemberType::BoundedSequence(t) => {
+        M::Sequence(t) => array_type_default(t.value_type, default)?,
+        M::BoundedSequence(t) => {
             let default = array_type_default(t.value_type, default)?;
             ensure!(default.len() <= t.max_size);
-            Ok(default)
+            default
         }
-    }
+    })
 }
 
 pub fn member_def(line: &str) -> Result<Member> {

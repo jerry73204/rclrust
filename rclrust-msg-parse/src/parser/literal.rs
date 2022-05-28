@@ -110,9 +110,11 @@ fn bool_literal(s: &str) -> IResult<&str, bool> {
 pub fn get_string_literal_parser(
     string_type: GenericString,
 ) -> Box<dyn FnMut(&str) -> IResult<&str, String>> {
+    use GenericString as G;
+
     match string_type {
-        GenericString::String | GenericString::WString => Box::new(string_literal),
-        GenericString::BoundedString(max_size) | GenericString::BoundedWString(max_size) => {
+        G::String | G::WString => Box::new(string_literal),
+        G::BoundedString(max_size) | G::BoundedWString(max_size) => {
             Box::new(move |s| verify(string_literal, |s: &str| s.len() <= max_size)(s))
         }
     }

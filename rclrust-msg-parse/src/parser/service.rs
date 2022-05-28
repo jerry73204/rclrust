@@ -1,7 +1,6 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
-use regex::Regex;
 
 use super::{error::RclMsgError, message::parse_message_string};
 use crate::types::Service;
@@ -9,7 +8,10 @@ use crate::types::Service;
 const SERVICE_REQUEST_SUFFIX: &str = "_Request";
 const SERVICE_RESPONSE_SUFFIX: &str = "_Response";
 
-pub fn parse_service_file<P: AsRef<Path>>(pkg_name: &str, interface_file: P) -> Result<Service> {
+pub fn parse_service_file<P>(pkg_name: &str, interface_file: P) -> Result<Service>
+where
+    P: AsRef<Path>,
+{
     let interface_file = interface_file.as_ref();
     let service_string = fs::read_to_string(interface_file)?.replace("\r\n", "\n");
 
@@ -22,17 +24,12 @@ pub fn parse_service_file<P: AsRef<Path>>(pkg_name: &str, interface_file: P) -> 
 }
 
 fn parse_service_string(pkg_name: &str, srv_name: &str, service_string: &str) -> Result<Service> {
-    let re = Regex::new(r"(?m)^---$").unwrap();
-    let service_blocks: Vec<_> = re.split(service_string).collect();
-    if service_blocks.len() != 2 {
-        return Err(RclMsgError::InvalidServiceSpecification(format!(
-            "Expect one '---' seperator in {}/{} service definition, but get {}",
-            pkg_name,
-            srv_name,
-            service_blocks.len() - 1
+    let (block1, block2) = service_string.split_once("---\n").ok_or_else(|| {
+        RclMsgError::InvalidServiceSpecification(format!(
+            "Expect one '---' seperator in {}/{} service definition",
+            pkg_name, srv_name,
         ))
-        .into());
-    }
+    })?;
 
     Ok(Service {
         package: pkg_name.into(),
@@ -40,12 +37,12 @@ fn parse_service_string(pkg_name: &str, srv_name: &str, service_string: &str) ->
         request: parse_message_string(
             pkg_name,
             &format!("{}{}", srv_name, SERVICE_REQUEST_SUFFIX),
-            service_blocks[0],
+            block1,
         )?,
         response: parse_message_string(
             pkg_name,
             &format!("{}{}", srv_name, SERVICE_RESPONSE_SUFFIX),
-            service_blocks[1],
+            block2,
         )?,
     })
 }

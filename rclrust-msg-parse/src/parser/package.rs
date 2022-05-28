@@ -23,7 +23,6 @@ enum Ns {
 struct IdlLine<'a> {
     pub ns: Ns,
     pub file_name: &'a str,
-    pub name: &'a str,
 }
 
 fn parse_line(line: &str) -> Result<Option<IdlLine>> {
@@ -40,13 +39,8 @@ fn parse_line(line: &str) -> Result<Option<IdlLine>> {
         "action" => Ns::Action,
         _ => return Err(err()),
     };
-    let name = &file_name[..(file_name.len() - 4)];
 
-    Ok(Some(IdlLine {
-        ns,
-        file_name,
-        name,
-    }))
+    Ok(Some(IdlLine { ns, file_name }))
 }
 
 fn get_ros_msgs_each_package<P>(root_dir: P) -> Result<Vec<Package>>
@@ -75,7 +69,7 @@ where
                 Package::new(pkg_name.to_string()),
                 |mut package, line| -> Result<_> {
                     let line = line?;
-                    let IdlLine { ns, file_name, .. } = match parse_line(&line)? {
+                    let IdlLine { ns, file_name } = match parse_line(&line)? {
                         Some(tuple) => tuple,
                         None => return Ok(package),
                     };
@@ -116,7 +110,10 @@ where
     Ok(packages)
 }
 
-pub fn get_packages(paths: &[impl AsRef<Path>]) -> Result<Vec<Package>> {
+pub fn get_packages<P>(paths: &[P]) -> Result<Vec<Package>>
+where
+    P: AsRef<Path>,
+{
     let mut packages: Vec<_> = paths
         .iter()
         .map(|path| get_ros_msgs_each_package(path.as_ref()))
@@ -134,18 +131,18 @@ pub fn get_packages(paths: &[impl AsRef<Path>]) -> Result<Vec<Package>> {
 mod tests {
     use super::*;
 
-    fn assert_line(path: &str, expect_ns: Ns, expect_name: &str) {
+    fn assert_line(path: &str, expect_ns: Ns, expect_file_name: &str) {
         assert!(matches!(
                 parse_line(path),
-                Ok(Some(IdlLine{ns, name, ..}))
-                    if ns == expect_ns && name == expect_name));
+                Ok(Some(IdlLine{ns, file_name, ..}))
+                    if ns == expect_ns && file_name == expect_file_name));
     }
 
     #[test]
     fn parse_line_test() {
-        assert_line("msg/TestHoge.idl", Ns::Msg, "TestHoge");
-        assert_line("srv/TestHoge.idl", Ns::Srv, "TestHoge");
-        assert_line("action/TestHoge.idl", Ns::Action, "TestHoge");
+        assert_line("msg/TestHoge.idl", Ns::Msg, "TestHoge.idl");
+        assert_line("srv/TestHoge.idl", Ns::Srv, "TestHoge.idl");
+        assert_line("action/TestHoge.idl", Ns::Action, "TestHoge.idl");
 
         assert!(matches!(parse_line("test/Test.msg"), Ok(None)));
         assert!(matches!(parse_line("test/Test.srv"), Ok(None)));

@@ -5,12 +5,15 @@ use anyhow::{Context, Result};
 use super::{constant::constant_def, member::member_def};
 use crate::types::Message;
 
-fn split_once(s: &'_ str, pat: char) -> (&'_ str, Option<&'_ str>) {
+fn split_once(s: &str, pat: char) -> (&str, Option<&str>) {
     let mut items = s.splitn(2, pat);
     (items.next().unwrap(), items.next())
 }
 
-pub fn parse_message_file<P: AsRef<Path>>(pkg_name: &str, interface_file: P) -> Result<Message> {
+pub fn parse_message_file<P>(pkg_name: &str, interface_file: P) -> Result<Message>
+where
+    P: AsRef<Path>,
+{
     parse_message_string(
         pkg_name,
         interface_file
