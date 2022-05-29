@@ -81,7 +81,7 @@ impl FFIFromRust for OwnedFFIString {
 impl Drop for OwnedFFIString {
     fn drop(&mut self) {
         unsafe {
-            CString::from_raw(self.data);
+            let _ = CString::from_raw(self.data);
         }
     }
 }

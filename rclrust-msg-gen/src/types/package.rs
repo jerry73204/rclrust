@@ -1,38 +1,34 @@
+use std::path::PathBuf;
+
 use proc_macro2::Span;
 use quote::{quote, ToTokens};
 use syn::Ident;
 
 use crate::types::{Action, Message, Service};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Package {
     pub name: String,
-    pub messages: Vec<Message>,
-    pub services: Vec<Service>,
+    pub msgs: Vec<Message>,
+    pub srvs: Vec<Service>,
     pub actions: Vec<Action>,
+    pub include_suffixes: Vec<PathBuf>,
+    pub share_suffixes: Vec<PathBuf>,
+    pub libraries: Vec<String>,
 }
 
 impl Package {
-    pub const fn new(name: String) -> Self {
-        Self {
-            name,
-            messages: Vec::new(),
-            services: Vec::new(),
-            actions: Vec::new(),
-        }
-    }
-
     pub fn is_empty(&self) -> bool {
-        self.messages.is_empty() && self.services.is_empty() && self.actions.is_empty()
+        self.msgs.is_empty() && self.srvs.is_empty() && self.actions.is_empty()
     }
 
     fn messages_block(&self) -> impl ToTokens {
-        if self.messages.is_empty() {
+        if self.msgs.is_empty() {
             quote! {
                 // empty msg
             }
         } else {
-            let items = self.messages.iter().map(|v| v.token_stream_with_mod("msg"));
+            let items = self.msgs.iter().map(|v| v.token_stream_with_mod("msg"));
             quote! {
                 pub mod msg {
                     #(#items)*
@@ -42,12 +38,12 @@ impl Package {
     }
 
     fn services_block(&self) -> impl ToTokens {
-        if self.services.is_empty() {
+        if self.srvs.is_empty() {
             quote! {
                 // empty srv
             }
         } else {
-            let items = self.services.iter().map(|v| v.token_stream_with_mod("srv"));
+            let items = self.srvs.iter().map(|v| v.token_stream_with_mod("srv"));
             quote! {
                 pub mod srv {
                     #(#items)*

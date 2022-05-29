@@ -3,4 +3,4 @@
 
 pub mod _core;
 
-include!(concat!(env!("OUT_DIR"), "/idl.rs"));
+include!(concat!(env!("OUT_DIR"), "/rust_src/ffi.rs"));

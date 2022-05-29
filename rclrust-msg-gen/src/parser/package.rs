@@ -1,17 +1,19 @@
 use std::{
+    borrow::Borrow,
+    collections::HashSet,
     fs::{self, File},
+    hash::Hash,
     io::{BufRead, BufReader},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, Context as _, Result};
+use convert_case::{Boundary, Case, Casing as _};
 use itertools::Itertools as _;
 use path_macro::path;
 
 use super::{action::parse_action_file, message::parse_message_file, service::parse_service_file};
 use crate::types::Package;
-
-const ROSIDL_INTERFACES: &str = "share/ament_index/resource_index/rosidl_interfaces";
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Ns {
@@ -36,158 +38,123 @@ impl IdlLine {
     }
 }
 
-pub fn load_package_dir<P>(package_dir: P) -> Result<Package>
-where
-    P: AsRef<Path>,
-{
-    let package_dir = package_dir.as_ref().canonicalize()?;
-    let invalid_dir_name_err = || anyhow!("Invalid directory name {}", package_dir.display());
-    let pkg_name = package_dir
-        .file_name()
-        .ok_or_else(invalid_dir_name_err)?
-        .to_str()
-        .ok_or_else(invalid_dir_name_err)?;
-    let msg_dir = package_dir.join("msg");
-    let srv_dir = package_dir.join("srv");
-    let action_dir = package_dir.join("action");
-
-    let mut package = Package::new(pkg_name.to_string());
-
-    if msg_dir.exists() {
-        msg_dir
-            .read_dir()?
-            .map(|entry| -> Result<_> {
-                let entry = entry?;
-                let path = entry.path();
-
-                match (path.file_stem(), path.extension()) {
-                    (Some(_), Some(ext)) if ext == "msg" => {}
-                    _ => return Ok(None),
-                }
-
-                Ok(Some(path))
-            })
-            .flatten_ok()
-            .map(|path| -> Result<_> {
-                let msg = parse_message_file(pkg_name, &path?)?;
-                Ok(msg)
-            })
-            .try_for_each(|msg| -> Result<_> {
-                package.messages.push(msg?);
-                Ok(())
-            })?;
-    }
-
-    if srv_dir.exists() {
-        srv_dir
-            .read_dir()?
-            .map(|entry| -> Result<_> {
-                let entry = entry?;
-                let path = entry.path();
-
-                match (path.file_stem(), path.extension()) {
-                    (Some(_), Some(ext)) if ext == "srv" => {}
-                    _ => return Ok(None),
-                }
-
-                Ok(Some(path))
-            })
-            .flatten_ok()
-            .map(|path| -> Result<_> {
-                let srv = parse_service_file(pkg_name, &path?)?;
-                Ok(srv)
-            })
-            .try_for_each(|srv| -> Result<_> {
-                package.services.push(srv?);
-                Ok(())
-            })?;
-    }
-
-    if action_dir.exists() {
-        action_dir
-            .read_dir()?
-            .map(|entry| -> Result<_> {
-                let entry = entry?;
-                let path = entry.path();
-
-                match (path.file_stem(), path.extension()) {
-                    (Some(_), Some(ext)) if ext == "action" => {}
-                    _ => return Ok(None),
-                }
-
-                Ok(Some(path))
-            })
-            .flatten_ok()
-            .map(|path| -> Result<_> {
-                let action = parse_action_file(pkg_name, &path?)?;
-                Ok(action)
-            })
-            .try_for_each(|action| -> Result<_> {
-                package.actions.push(action?);
-                Ok(())
-            })?;
-    }
-
-    ensure!(
-        package.is_empty(),
-        "None of msg, srv, action directory found in '{}'",
-        package_dir.display()
-    );
-
-    Ok(package)
+#[derive(Debug, Clone)]
+pub struct AmentPrefix {
+    pub packages: Vec<Package>,
+    pub resource_dir: PathBuf,
+    pub lib_dir: PathBuf,
+    pub include_dir: PathBuf,
 }
 
-pub fn load_ros2_dir<P>(root_dir: P) -> Result<Vec<Package>>
+pub fn load_ament_prefix<P, S>(root_dir: P, exclude_packages: &HashSet<S>) -> Result<AmentPrefix>
 where
     P: AsRef<Path>,
+    S: Borrow<str> + Hash + Eq,
 {
     let root_dir = root_dir.as_ref();
+    let resource_dir =
+        path!(root_dir / "share" / "ament_index" / "resource_index" / "rosidl_interfaces");
+    let lib_dir = root_dir.join("lib");
+    let include_dir = root_dir.join("include");
     let share_dir = root_dir.join("share");
-    let idl_dir = root_dir.join(ROSIDL_INTERFACES);
 
-    let packages: Vec<_> = load_rosidl_interfaces(&idl_dir)?
+    let packages: Vec<_> = load_rosidl_interfaces(&resource_dir)?
         .into_iter()
         .map(|pkg| -> Result<_> {
             let IdlPackage { pkg_name, lines } = pkg;
 
-            let package = lines.into_iter().try_fold(
-                Package::new(pkg_name.clone()),
-                |mut package, idl_line| -> Result<_> {
-                    let IdlLine { ns, file_name } = idl_line;
+            if exclude_packages.contains(&pkg_name) {
+                return Ok(None);
+            }
 
-                    match ns {
-                        Ns::Msg => {
-                            let msg = parse_message_file(
-                                &pkg_name,
-                                path!(share_dir / &pkg_name / "msg" / &*file_name),
-                            )?;
-                            package.messages.push(msg);
-                        }
-                        Ns::Srv => {
-                            let srv = parse_service_file(
-                                &pkg_name,
-                                path!(share_dir / &pkg_name / "srv" / &*file_name),
-                            )?;
-                            package.services.push(srv);
-                        }
-                        Ns::Action => {
-                            let action = parse_action_file(
-                                &pkg_name,
-                                path!(share_dir / &pkg_name / "action" / &*file_name),
-                            )?;
-                            package.actions.push(action);
-                        }
+            let libraries = vec![
+                format!("{}__rosidl_generator_c", pkg_name),
+                format!("{}__rosidl_typesupport_c", pkg_name),
+                format!("{}__rosidl_typesupport_introspection_c", pkg_name),
+            ];
+            let mut msgs = vec![];
+            let mut srvs = vec![];
+            let mut actions = vec![];
+            let mut share_suffixes = vec![];
+            let mut include_suffixes = vec![];
+
+            lines.into_iter().try_for_each(|idl_line| -> Result<_> {
+                let idl_name = idl_line.name();
+                let IdlLine { ns, file_name } = &idl_line;
+
+                match ns {
+                    Ns::Msg => {
+                        let header_suffix =
+                            path!(&pkg_name / "msg" / format!("{}.h", camel2snake(idl_name)));
+                        include_suffixes.push(header_suffix);
+
+                        let share_suffix = path!(&pkg_name / "msg" / &*file_name);
+                        let idl_path = path!(share_dir / share_suffix);
+                        share_suffixes.push(share_suffix);
+
+                        // panic!("{}", msg_path.display());
+                        let msg = parse_message_file(&pkg_name, &idl_path).with_context(|| {
+                            anyhow!("unable to parse file '{}'", idl_path.display())
+                        })?;
+                        msgs.push(msg);
                     }
+                    Ns::Srv => {
+                        let header_suffix =
+                            path!(&pkg_name / "srv" / format!("{}.h", camel2snake(idl_name)));
+                        include_suffixes.push(header_suffix);
 
-                    Ok(package)
-                },
-            )?;
+                        let share_suffix = path!(&pkg_name / "srv" / &*file_name);
+                        let idl_path = path!(share_dir / share_suffix);
+                        share_suffixes.push(share_suffix);
 
-            Ok(package)
+                        // panic!("{}", srv_path.display());
+                        let srv = parse_service_file(&pkg_name, &idl_path).with_context(|| {
+                            anyhow!("unable to parse file '{}'", idl_path.display())
+                        })?;
+                        srvs.push(srv);
+                    }
+                    Ns::Action => {
+                        let header_suffix =
+                            path!(&pkg_name / "action" / format!("{}.h", camel2snake(idl_name)));
+                        include_suffixes.push(header_suffix);
+
+                        let share_suffix = path!(&pkg_name / "action" / &*file_name);
+                        let idl_path = path!(share_dir / share_suffix);
+                        share_suffixes.push(share_suffix);
+
+                        // panic!("{}", action_path.display());
+                        let action =
+                            parse_action_file(&pkg_name, &idl_path).with_context(|| {
+                                anyhow!("unable to parse file '{}'", idl_path.display())
+                            })?;
+                        actions.push(action);
+                    }
+                }
+
+                Ok(())
+            })?;
+
+            let package = Package {
+                name: pkg_name,
+                msgs,
+                srvs,
+                actions,
+                include_suffixes,
+                share_suffixes,
+                libraries,
+            };
+
+            Ok(Some(package))
         })
+        .flatten_ok()
         .try_collect()?;
 
-    Ok(packages)
+    Ok(AmentPrefix {
+        packages,
+        resource_dir,
+        lib_dir,
+        include_dir,
+    })
 }
 
 fn load_rosidl_interfaces<P>(dir: P) -> Result<Vec<IdlPackage>>
@@ -249,6 +216,15 @@ fn parse_line(line: &str) -> Result<Option<IdlLine>> {
         ns,
         file_name: file_name.into_os_string().into_string().unwrap(),
     }))
+}
+
+fn camel2snake(input: &str) -> String {
+    use Boundary as B;
+
+    input
+        .from_case(Case::Camel)
+        .with_boundaries(&[B::LowerUpper, B::DigitUpper, B::Acronym])
+        .to_case(Case::Snake)
 }
 
 #[cfg(test)]
