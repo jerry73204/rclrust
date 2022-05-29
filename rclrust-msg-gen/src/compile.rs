@@ -241,7 +241,12 @@ impl CompileConfig {
                     lib_dir.display()
                 )],
                 self.link_rpath
-                    .then(|| format!("cargo:rustc-link-arg=-Wl,-rpath={}", lib_dir.display()))
+                    .then(|| [
+                        format!("cargo:rustc-link-arg=-Wl,-rpath={}", lib_dir.display()),
+                        format!("cargo:rustc-link-arg=-Wl,--disable-new-dtags")
+                    ])
+                    .into_iter()
+                    .flatten()
             ));
         });
 
