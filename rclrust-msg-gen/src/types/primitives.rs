@@ -223,17 +223,17 @@ impl GenericString {
 
     fn raw_type_tokens(self) -> impl ToTokens {
         if self.is_wide() {
-            quote! { crate::_core::FFIWString }
+            quote! { ::rclrust_msg_types::FFIWString }
         } else {
-            quote! { crate::_core::FFIString }
+            quote! { ::rclrust_msg_types::FFIString }
         }
     }
 
     fn raw_ref_type_tokens(self) -> impl ToTokens {
         if self.is_wide() {
-            quote! { crate::_core::OwnedFFIWString }
+            quote! { ::rclrust_msg_types::OwnedFFIWString }
         } else {
-            quote! { crate::_core::OwnedFFIString }
+            quote! { ::rclrust_msg_types::OwnedFFIString }
         }
     }
 

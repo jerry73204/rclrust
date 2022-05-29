@@ -8,10 +8,8 @@ use std::{
 
 use anyhow::{ensure, Context as _, Result};
 use futures::channel::mpsc;
-use rclrust_msg::{
-    _core::{FFIToRust, MessageT, ServiceT},
-    rcl_interfaces::msg::ParameterDescriptor,
-};
+use rclrust_msg::rcl_interfaces::msg::ParameterDescriptor;
+use rclrust_msg_types::{FFIToRust, MessageT, ServiceT};
 
 use crate::{
     client::Client,

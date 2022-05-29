@@ -22,7 +22,7 @@ use std::{
 };
 
 use anyhow::{Context as _, Result};
-use rclrust_msg::_core::{MessageT, ServiceResponseRaw, ServiceT};
+use rclrust_msg_types::{MessageT, ServiceResponseRaw, ServiceT};
 
 use crate::{
     error::ToRclRustResult, internal::ffi::*, log::Logger, node::RclNode, qos::QoSProfile,

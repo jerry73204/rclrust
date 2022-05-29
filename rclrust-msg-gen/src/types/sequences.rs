@@ -46,16 +46,16 @@ impl Sequence {
 
     pub fn raw_type_tokens(&self, package: &str) -> impl ToTokens {
         let inner_type = self.value_type.raw_type_tokens(package);
-        quote! { crate::_core::FFISeq<#inner_type> }
+        quote! { ::rclrust_msg_types::FFISeq<#inner_type> }
     }
 
     pub fn raw_ref_type_tokens(&self, package: &str) -> impl ToTokens {
         let inner_type = self.value_type.raw_ref_type_tokens(package);
         match self.value_type {
             NestableType::BasicType(_) => {
-                quote! { crate::_core::RefFFISeq<#inner_type> }
+                quote! { ::rclrust_msg_types::RefFFISeq<#inner_type> }
             }
-            _ => quote! { crate::_core::OwnedFFISeq<#inner_type> },
+            _ => quote! { ::rclrust_msg_types::OwnedFFISeq<#inner_type> },
         }
     }
 }
@@ -77,16 +77,16 @@ impl BoundedSequence {
 
     pub fn raw_type_tokens(&self, package: &str) -> impl ToTokens {
         let inner_type = self.value_type.raw_type_tokens(package);
-        quote! { crate::_core::FFISeq<#inner_type> }
+        quote! { ::rclrust_msg_types::FFISeq<#inner_type> }
     }
 
     pub fn raw_ref_type_tokens(&self, package: &str) -> impl ToTokens {
         let inner_type = self.value_type.raw_ref_type_tokens(package);
         match self.value_type {
             NestableType::BasicType(_) => {
-                quote! { crate::_core::RefFFISeq<#inner_type> }
+                quote! { ::rclrust_msg_types::RefFFISeq<#inner_type> }
             }
-            _ => quote! { crate::_core::OwnedFFISeq<#inner_type> },
+            _ => quote! { ::rclrust_msg_types::OwnedFFISeq<#inner_type> },
         }
     }
 }

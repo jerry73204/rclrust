@@ -3,7 +3,7 @@
 use std::marker::PhantomData;
 
 use anyhow::Result;
-use rclrust_msg::_core::MessageT;
+use rclrust_msg_types::MessageT;
 
 use crate::{node::Node, qos::QoSProfile};
 

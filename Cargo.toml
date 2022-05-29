@@ -3,5 +3,6 @@ members = [
     "rclrust",
     "rclrust-msg",
     "rclrust-msg-gen",
+    "rclrust-msg-types",
     "rcl-sys",
 ]

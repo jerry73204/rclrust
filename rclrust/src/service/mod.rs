@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use futures::channel::mpsc;
-use rclrust_msg::_core::{MessageT, ServiceT};
+use rclrust_msg_types::{MessageT, ServiceT};
 
 use crate::{
     internal::worker::{ReceiveWorker, WorkerMessage},

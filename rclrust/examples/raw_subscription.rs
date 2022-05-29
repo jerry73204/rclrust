@@ -1,6 +1,7 @@
 use anyhow::Result;
 use rclrust::{qos::QoSProfile, rclrust_info};
-use rclrust_msg::{_core::FFIToRust, std_msgs::msg::String as String_};
+use rclrust_msg::std_msgs::msg::String as String_;
+use rclrust_msg_types::FFIToRust;
 
 #[tokio::main]
 async fn main() -> Result<()> {

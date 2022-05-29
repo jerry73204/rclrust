@@ -2,7 +2,7 @@ use std::{fmt, sync::Arc};
 
 use anyhow::Result;
 use futures::channel::mpsc;
-use rclrust_msg::_core::ServiceT;
+use rclrust_msg_types::ServiceT;
 
 use super::{ChannelMessage, Client, RclClient};
 use crate::{error::RclRustError, internal::worker::WorkerMessage, rclrust_debug, Logger};

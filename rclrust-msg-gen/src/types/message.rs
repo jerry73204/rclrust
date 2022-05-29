@@ -43,7 +43,7 @@ impl Member {
             let default = self.r#type.value_tokens(default);
             quote! { #name: #default, }
         } else {
-            quote! { #name: crate::_core::InternalDefault::_default(), }
+            quote! { #name: ::rclrust_msg_types::InternalDefault::_default(), }
         }
     }
 
@@ -81,7 +81,7 @@ impl Member {
                 value_type: NestableType::BasicType(_),
                 ..
             }) => quote! { from.#name.clone() },
-            _ => quote! { crate::_core::FFIFromRust::from_rust(&from.#name) },
+            _ => quote! { ::rclrust_msg_types::FFIFromRust::from_rust(&from.#name) },
         };
         quote! { #name: #value, }
     }
@@ -184,7 +184,7 @@ impl Message {
             use std::os::raw::c_void;
 
             #[allow(unused_imports)]
-            use crate::_core::InternalDefault as _;
+            use ::rclrust_msg_types::InternalDefault as _;
 
             #[allow(non_camel_case_types)]
             #[derive(std::fmt::Debug, std::clone::Clone, std::cmp::PartialEq)]
@@ -201,7 +201,7 @@ impl Message {
                 fn #type_supprt_func() -> *const c_void;
             }
 
-            impl crate::_core::MessageT for #rust_type {
+            impl ::rclrust_msg_types::MessageT for #rust_type {
                 type Raw = #raw_type;
                 type RawRef = #raw_ref_type;
 
@@ -212,7 +212,7 @@ impl Message {
                 }
             }
 
-            impl crate::_core::InternalDefault for #rust_type {
+            impl ::rclrust_msg_types::InternalDefault for #rust_type {
                 fn _default() -> Self {
                     Self {
                         #(#rust_type_default_inner)*
@@ -223,7 +223,7 @@ impl Message {
             impl std::default::Default for #rust_type {
                 #[inline]
                 fn default() -> Self {
-                    crate::_core::InternalDefault::_default()
+                    ::rclrust_msg_types::InternalDefault::_default()
                 }
             }
 
@@ -243,7 +243,7 @@ impl Message {
                 #(#raw_type_def_inner)*
             }
 
-            impl crate::_core::FFIToRust for #raw_type {
+            impl ::rclrust_msg_types::FFIToRust for #raw_type {
                 type Target = #rust_type;
 
                 unsafe fn to_rust(&self) -> Self::Target {
@@ -283,7 +283,7 @@ impl Message {
                 #(#raw_ref_type_def_inner)*
             }
 
-            impl crate::_core::FFIFromRust for #raw_ref_type {
+            impl ::rclrust_msg_types::FFIFromRust for #raw_ref_type {
                 type From = #rust_type;
 
                 #[allow(unused_variables)]
@@ -297,7 +297,7 @@ impl Message {
             #[cfg(test)]
             mod test {
                 use super::*;
-                use crate::_core::MessageT;
+                use ::rclrust_msg_types::MessageT;
 
                 #[test]
                 fn test_rust_default() {

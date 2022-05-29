@@ -1,0 +1,18 @@
+[package]
+name = "rclrust-msg-types"
+version = "0.1.0"
+edition = "2021"
+authors = [
+    "Yuma Hiramatsu <yuma.hiramatsu@gmail.com>",
+    "Jerry Lin <jerry73204@gmail.com>",
+]
+description = "ROS2 base types and traits"
+repository = "https://github.com/jerry73204/rclrust"
+license = "Apache-2.0"
+
+categories = ["science::robotics"]
+keywords = ["ros2"]
+
+[dependencies]
+array-init = "2.0"
+widestring = "0.4"

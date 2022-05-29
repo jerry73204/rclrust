@@ -59,7 +59,7 @@ impl Service {
                 fn #type_supprt_func() -> *const c_void;
             }
 
-            impl crate::_core::ServiceT for #srv_type {
+            impl ::rclrust_msg_types::ServiceT for #srv_type {
                 type Request = #req_type;
                 type Response = #res_type;
 
@@ -81,7 +81,7 @@ impl Service {
             #[cfg(test)]
             mod test {
                 use super::*;
-                use crate::_core::ServiceT;
+                use ::rclrust_msg_types::ServiceT;
 
                 #[test]
                 fn test_type_support() {

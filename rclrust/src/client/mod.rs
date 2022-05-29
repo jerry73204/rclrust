@@ -9,7 +9,7 @@ use std::{
 
 use anyhow::Result;
 use futures::channel::{mpsc, oneshot};
-use rclrust_msg::_core::{FFIToRust, ServiceResponseRaw, ServiceT};
+use rclrust_msg_types::{FFIToRust, ServiceResponseRaw, ServiceT};
 
 use crate::{
     internal::worker::{ReceiveWorker, WorkerMessage},

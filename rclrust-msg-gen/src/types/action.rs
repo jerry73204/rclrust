@@ -186,7 +186,7 @@ impl Action {
                 fn #type_supprt_func() -> *const c_void;
             }
 
-            impl crate::_core::ActionT for #action_type {
+            impl ::rclrust_msg_types::ActionT for #action_type {
                 type Goal = #goal_type;
                 type Result = #result_type;
                 type Feedback = #feedback_type;
@@ -228,7 +228,7 @@ impl Action {
             #[cfg(test)]
             mod test {
                 use super::*;
-                use crate::_core::ActionT;
+                use ::rclrust_msg_types::ActionT;
 
                 #[test]
                 fn test_type_support() {
