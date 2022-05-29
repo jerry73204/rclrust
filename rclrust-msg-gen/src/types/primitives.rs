@@ -215,7 +215,7 @@ impl GenericString {
 
     fn type_tokens(self) -> impl ToTokens {
         if self.is_wide() {
-            quote! { ::widestring::U16String }
+            quote! { ::rclrust_msg_types::widestring::U16String }
         } else {
             quote! { ::std::string::String }
         }
@@ -241,7 +241,7 @@ impl GenericString {
         // TODO: Assertion
         let value = Literal::string(value);
         if self.is_wide() {
-            quote! { ::widestring::U16String::from_str(#value) }
+            quote! { ::rclrust_msg_types::widestring::U16String::from_str(#value) }
         } else {
             quote! { ::std::string::String::from(#value) }
         }
