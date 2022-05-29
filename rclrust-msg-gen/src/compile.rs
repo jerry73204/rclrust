@@ -1,9 +1,7 @@
 use std::{
     borrow::{Borrow, Cow},
     collections::HashSet,
-    env,
-    fs::{self, OpenOptions},
-    io::{prelude::*, BufWriter},
+    env, fs,
     path::{Path, PathBuf},
 };
 
@@ -20,13 +18,12 @@ const LIBSTATISTICS_COLLECTOR_NAME: &str = "libstatistics_collector";
 
 #[derive(Debug, Clone)]
 pub struct CompileConfig {
-    search_ament_prefix_path: bool,
+    search_env: bool,
+    codegen_single_file: bool,
+    link_rpath: bool,
     ament_prefix_paths: Vec<PathBuf>,
     exclude_packages: HashSet<Cow<'static, str>>,
     output_dir: PathBuf,
-    codegen_single_file: bool,
-    codegen: bool,
-    cc_build: Option<cc::Build>,
 }
 
 impl Default for CompileConfig {
@@ -38,20 +35,19 @@ impl Default for CompileConfig {
 impl CompileConfig {
     pub fn new() -> Self {
         Self {
-            search_ament_prefix_path: true,
+            search_env: true,
             ament_prefix_paths: vec![],
             output_dir: env::var_os("OUT_DIR").unwrap().into(),
-            codegen: true,
             codegen_single_file: true,
-            cc_build: None,
             exclude_packages: [Cow::Borrowed(LIBSTATISTICS_COLLECTOR_NAME)]
                 .into_iter()
                 .collect(),
+            link_rpath: true,
         }
     }
 
-    pub const fn search_ament_prefix_path(mut self, yes: bool) -> Self {
-        self.search_ament_prefix_path = yes;
+    pub const fn search_env(mut self, yes: bool) -> Self {
+        self.search_env = yes;
         self
     }
 
@@ -78,16 +74,16 @@ impl CompileConfig {
         self
     }
 
+    pub const fn link_rpath(mut self, yes: bool) -> Self {
+        self.link_rpath = yes;
+        self
+    }
+
     pub fn out_dir<P>(mut self, dir: P) -> Self
     where
         P: AsRef<Path>,
     {
         self.output_dir = dir.as_ref().to_owned();
-        self
-    }
-
-    pub const fn codegen(mut self, yes: bool) -> Self {
-        self.codegen = yes;
         self
     }
 
@@ -114,15 +110,7 @@ impl CompileConfig {
         self
     }
 
-    pub fn compile_ffi<B>(mut self, build: B) -> Self
-    where
-        B: Into<Option<cc::Build>>,
-    {
-        self.cc_build = build.into();
-        self
-    }
-
-    pub fn run(mut self) -> Result<CompileOutput> {
+    pub fn run(self) -> Result<CompileOutput> {
         // init
         let mut build_commands = vec![];
 
@@ -146,37 +134,26 @@ impl CompileConfig {
         aments.iter().for_each(|ament| {
             build_commands.extend([
                 format!("cargo:rerun-if-changed={}", ament.resource_dir.display()),
-                format!("cargo:rerun-if-changed={}", ament.lib_dir.display()),
+                // format!("cargo:rerun-if-changed={}", ament.lib_dir.display()),
                 format!("cargo:rerun-if-changed={}", ament.include_dir.display()),
             ])
         });
 
         // codegen
-        let generated_rust_files = if self.codegen {
-            if self.codegen_single_file {
-                let rust_file = self.run_codegen_file(&packages)?;
-                vec![rust_file]
-            } else {
-                self.run_codegen_dir(&packages)?
-            }
+        let generated_rust_files = if self.codegen_single_file {
+            let rust_file = self.run_codegen_file(&packages)?;
+            vec![rust_file]
         } else {
-            vec![]
+            self.run_codegen_dir(&packages)?
         };
 
         // compile
-        let (cc_build, generated_c_files) = if let Some(mut cc_build) = self.cc_build.take() {
-            let c_file = self.configure_cc_build(&aments, &mut build_commands, &mut cc_build)?;
-            (Some(cc_build), vec![c_file])
-        } else {
-            (None, vec![])
-        };
+        self.link(&aments, &mut build_commands);
 
         Ok(CompileOutput {
             package_names,
-            cc_build,
             build_commands,
             generated_rust_files,
-            generated_c_files,
         })
     }
 
@@ -184,7 +161,7 @@ impl CompileConfig {
     where
         B: Extend<String>,
     {
-        let default_dirs = if self.search_ament_prefix_path {
+        let default_dirs = if self.search_env {
             build_commands.extend(["cargo:rerun-if-env-changed=AMENT_PREFIX_PATH".to_string()]);
 
             let ament_prefix_paths = env::var("AMENT_PREFIX_PATH")
@@ -217,16 +194,7 @@ impl CompileConfig {
                 let rust_file = rust_src_dir.join(format!("{}.rs", pkg.name));
                 let token_stream = pkg.token_stream(true);
                 let content = (quote! { #token_stream }).to_string();
-
-                let mut writer = BufWriter::new(
-                    OpenOptions::new()
-                        .write(true)
-                        .create(true)
-                        .open(&rust_file)?,
-                );
-                writer.write_all(content.as_bytes())?;
-                writer.flush()?;
-
+                fs::write(&rust_file, &content)?;
                 Ok(rust_file)
             })
             .try_collect()?;
@@ -254,40 +222,27 @@ impl CompileConfig {
         let rust_src_dir = self.rust_src_dir();
         fs::create_dir_all(&rust_src_dir)?;
         let rust_file = rust_src_dir.join("ffi.rs");
-
-        let mut writer = BufWriter::new(
-            OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(&rust_file)?,
-        );
-        writer.write_all(content.as_bytes())?;
-        writer.flush()?;
-
+        fs::write(&rust_file, &content)?;
         Ok(rust_file)
     }
 
-    fn configure_cc_build<A, B>(
-        &self,
-        aments: &[A],
-        build_commands: &mut B,
-        build: &mut cc::Build,
-    ) -> Result<PathBuf>
+    fn link<A, B>(&self, aments: &[A], build_commands: &mut B)
     where
         A: Borrow<AmentPrefix>,
         B: Extend<String>,
     {
-        let c_src_dir = self.c_src_dir();
-
-        let include_dirs = aments.iter().map(|ament| &ament.borrow().include_dir);
-        build.includes(include_dirs);
-
         // Add library search dirs
         aments.iter().for_each(|ament| {
-            build_commands.extend([format!(
-                "cargo:rustc-link-search=native={}",
-                ament.borrow().lib_dir.display()
-            )]);
+            let lib_dir = &ament.borrow().lib_dir;
+
+            build_commands.extend(chain!(
+                [format!(
+                    "cargo:rustc-link-search=native={}",
+                    lib_dir.display()
+                )],
+                self.link_rpath
+                    .then(|| format!("cargo:rustc-link-arg=-Wl,-rpath={}", lib_dir.display()))
+            ));
         });
 
         // Add linked libraries
@@ -304,42 +259,16 @@ impl CompileConfig {
             .for_each(|command| {
                 build_commands.extend([command]);
             });
-
-        // Generate C code
-        let c_code = aments
-            .iter()
-            .flat_map(|ament| {
-                ament.borrow().packages.iter().flat_map(|pkg| {
-                    pkg.include_suffixes
-                        .iter()
-                        .map(|suffix| format!("#include <{}>", suffix.display()))
-                })
-            })
-            .join("\n");
-
-        let c_file = c_src_dir.join("ffi.c");
-        fs::create_dir_all(&c_src_dir)?;
-        fs::write(&c_file, &c_code)?;
-
-        build.file(&c_file);
-
-        Ok(c_file)
     }
 
     fn rust_src_dir(&self) -> PathBuf {
         self.output_dir.join("rust_src")
-    }
-
-    fn c_src_dir(&self) -> PathBuf {
-        self.output_dir.join("c_src")
     }
 }
 
 #[derive(Debug)]
 pub struct CompileOutput {
     pub package_names: Vec<String>,
-    pub cc_build: Option<cc::Build>,
     pub build_commands: Vec<String>,
     pub generated_rust_files: Vec<PathBuf>,
-    pub generated_c_files: Vec<PathBuf>,
 }

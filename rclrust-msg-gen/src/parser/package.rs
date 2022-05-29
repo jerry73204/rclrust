@@ -76,7 +76,12 @@ where
             let mut srvs = vec![];
             let mut actions = vec![];
             let mut share_suffixes = vec![];
-            let mut include_suffixes = vec![];
+            let mut include_suffixes = vec![
+                path!(&pkg_name / "msg" / "rosidl_generator_c__visibility_control.h"),
+                path!(
+                    &pkg_name / "msg" / "rosidl_typesupport_introspection_c__visibility_control.h"
+                ),
+            ];
 
             lines.into_iter().try_for_each(|idl_line| -> Result<_> {
                 let idl_name = idl_line.name();
@@ -84,9 +89,9 @@ where
 
                 match ns {
                     Ns::Msg => {
-                        let header_suffix =
+                        let include_suffix =
                             path!(&pkg_name / "msg" / format!("{}.h", camel2snake(idl_name)));
-                        include_suffixes.push(header_suffix);
+                        include_suffixes.push(include_suffix);
 
                         let share_suffix = path!(&pkg_name / "msg" / &*file_name);
                         let idl_path = path!(share_dir / share_suffix);
@@ -99,9 +104,9 @@ where
                         msgs.push(msg);
                     }
                     Ns::Srv => {
-                        let header_suffix =
+                        let include_suffix =
                             path!(&pkg_name / "srv" / format!("{}.h", camel2snake(idl_name)));
-                        include_suffixes.push(header_suffix);
+                        include_suffixes.push(include_suffix);
 
                         let share_suffix = path!(&pkg_name / "srv" / &*file_name);
                         let idl_path = path!(share_dir / share_suffix);
@@ -114,9 +119,9 @@ where
                         srvs.push(srv);
                     }
                     Ns::Action => {
-                        let header_suffix =
+                        let include_suffix =
                             path!(&pkg_name / "action" / format!("{}.h", camel2snake(idl_name)));
-                        include_suffixes.push(header_suffix);
+                        include_suffixes.push(include_suffix);
 
                         let share_suffix = path!(&pkg_name / "action" / &*file_name);
                         let idl_path = path!(share_dir / share_suffix);

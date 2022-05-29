@@ -17,5 +17,4 @@ widestring = "0.4"
 
 [build-dependencies]
 anyhow = "1.0.57"
-rclrust-msg-gen = { path = "../rclrust-msg-gen", version = "0.1.0" }
-cc = "1.0.73"
+rclrust-msg-gen = { version = "0.1.0", path = "../rclrust-msg-gen" }
