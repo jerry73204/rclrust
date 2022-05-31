@@ -1,5 +1,5 @@
 use std::{
-    borrow::{Borrow, Cow},
+    borrow::Borrow,
     collections::HashSet,
     env, fs,
     path::{Path, PathBuf},
@@ -14,7 +14,7 @@ use crate::{
     types::Package,
 };
 
-const LIBSTATISTICS_COLLECTOR_NAME: &str = "libstatistics_collector";
+const DEFAULT_EXCLUDED_PACKAGES: &[&str] = &["libstatistics_collector"];
 
 #[derive(Debug, Clone)]
 pub struct CompileConfig {
@@ -22,7 +22,7 @@ pub struct CompileConfig {
     codegen_single_file: bool,
     link_rpath: bool,
     ament_prefix_paths: Vec<PathBuf>,
-    exclude_packages: HashSet<Cow<'static, str>>,
+    exclude_packages: HashSet<String>,
     output_dir: PathBuf,
 }
 
@@ -39,8 +39,9 @@ impl CompileConfig {
             ament_prefix_paths: vec![],
             output_dir: env::var_os("OUT_DIR").unwrap().into(),
             codegen_single_file: true,
-            exclude_packages: [Cow::Borrowed(LIBSTATISTICS_COLLECTOR_NAME)]
-                .into_iter()
+            exclude_packages: DEFAULT_EXCLUDED_PACKAGES
+                .iter()
+                .map(|pkg| pkg.to_string())
                 .collect(),
             link_rpath: true,
         }
@@ -94,19 +95,19 @@ impl CompileConfig {
 
     pub fn exclude_package<S>(mut self, package: S) -> Self
     where
-        S: Into<Cow<'static, str>>,
+        S: ToString,
     {
-        self.exclude_packages.insert(package.into());
+        self.exclude_packages.insert(package.to_string());
         self
     }
 
     pub fn exclude_packages<S, I>(mut self, packages: I) -> Self
     where
-        S: Into<Cow<'static, str>>,
+        S: ToString,
         I: IntoIterator<Item = S>,
     {
         self.exclude_packages
-            .extend(packages.into_iter().map(|pkg| pkg.into()));
+            .extend(packages.into_iter().map(|pkg| pkg.to_string()));
         self
     }
 
