@@ -1,10 +1,13 @@
 [package]
-name = "rclrust-msg-gen"
+name = "rclrust-msg-parse"
 version = "0.1.0"
 edition = "2021"
-authors = ["Yuma Hiramatsu <yuma.hiramatsu@gmail.com>"]
+authors = [
+    "Yuma Hiramatsu <yuma.hiramatsu@gmail.com>",
+    "Jerry Lin <jerry73204@gmail.com>",
+]
 
-description = "ROS IDL codegen for rclrust-msg"
+description = "ROS IDL parser for rclrust-msg"
 repository = "https://github.com/rclrust/rclrust"
 license = "Apache-2.0"
 
@@ -21,7 +24,6 @@ itertools = "0.10.3"
 path_macro = "1.0.0"
 newline-converter = "0.2.0"
 convert_case = "0.5.0"
-rclrust-msg-parse = { version = "0.1.0", path = "../rclrust-msg-parse" }
 
 [dev-dependencies]
-rclrust-msg-types = { version = "0.1.0", path = "../rclrust-msg-types" }
+rclrust-msg-types = { path = "../rclrust-msg-types" }

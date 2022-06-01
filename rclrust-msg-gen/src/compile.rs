@@ -8,8 +8,7 @@ use std::{
 use anyhow::{anyhow, ensure, Context as _, Result};
 use itertools::{chain, Itertools as _};
 use quote::quote;
-
-use crate::{
+use rclrust_msg_parse::{
     parser::package::{load_ament_prefix, AmentPrefix},
     types::Package,
 };
