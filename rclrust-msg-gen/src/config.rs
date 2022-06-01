@@ -22,14 +22,19 @@ pub struct CompileConfig {
     pub(crate) output_dir: PathBuf,
 }
 
-impl Default for CompileConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl CompileConfig {
-    pub fn new() -> Self {
+    pub fn new_clean() -> Self {
+        Self {
+            search_env: false,
+            ament_prefix_paths: vec![],
+            output_dir: env::var_os("OUT_DIR").unwrap().into(),
+            exclude_packages: HashSet::new(),
+            link_rpath: false,
+            emit_build_script: false,
+        }
+    }
+
+    pub fn new_ros2() -> Self {
         Self {
             search_env: true,
             ament_prefix_paths: vec![],
