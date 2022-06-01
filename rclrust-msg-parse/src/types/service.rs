@@ -45,13 +45,13 @@ impl Service {
         let response_body = self.response.token_stream(namespace);
 
         quote! {
-            use std::os::raw::c_void;
+            use ::std::os::raw::c_void;
 
             pub use self::request::*;
             pub use self::response::*;
 
             #[allow(non_camel_case_types)]
-            #[derive(std::fmt::Debug)]
+            #[derive(::std::fmt::Debug)]
             pub struct #srv_type;
 
             #[link(name = #typesupport_c_lib)]

@@ -168,7 +168,7 @@ impl Action {
         let feedback_message_body = self.feedback_message_msg().token_stream(namespace);
 
         quote! {
-            use std::os::raw::c_void;
+            use ::std::os::raw::c_void;
 
             pub use self::goal::*;
             pub use self::result::*;
@@ -178,7 +178,7 @@ impl Action {
             pub use self::feedback_message::*;
 
             #[allow(non_camel_case_types)]
-            #[derive(std::fmt::Debug)]
+            #[derive(::std::fmt::Debug)]
             pub struct #action_type;
 
             #[link(name = #typesupport_c_lib)]

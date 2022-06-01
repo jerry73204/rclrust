@@ -180,14 +180,14 @@ impl Message {
 
         quote! {
             #[allow(unused_imports)]
-            use std::convert::TryInto as _;
-            use std::os::raw::c_void;
+            use ::std::convert::TryInto as _;
+            use ::std::os::raw::c_void;
 
             #[allow(unused_imports)]
             use ::rclrust_msg_types::InternalDefault as _;
 
             #[allow(non_camel_case_types)]
-            #[derive(std::fmt::Debug, std::clone::Clone, std::cmp::PartialEq)]
+            #[derive(::std::fmt::Debug, ::std::clone::Clone, ::std::cmp::PartialEq)]
             pub struct #rust_type {
                 #(#rust_type_def_inner)*
             }
@@ -220,7 +220,7 @@ impl Message {
                 }
             }
 
-            impl std::default::Default for #rust_type {
+            impl ::std::default::Default for #rust_type {
                 #[inline]
                 fn default() -> Self {
                     ::rclrust_msg_types::InternalDefault::_default()
@@ -238,7 +238,7 @@ impl Message {
 
             #[allow(non_camel_case_types)]
             #[repr(C)]
-            #[derive(std::fmt::Debug)]
+            #[derive(::std::fmt::Debug)]
             pub struct #raw_type {
                 #(#raw_type_def_inner)*
             }
@@ -253,10 +253,10 @@ impl Message {
                 }
             }
 
-            impl std::default::Default for #raw_type {
+            impl ::std::default::Default for #raw_type {
                 fn default() -> Self {
                     unsafe {
-                        let mut msg: Self = std::mem::zeroed();
+                        let mut msg: Self = ::std::mem::zeroed();
                         assert!(#init_func(&mut msg));
                         msg
                     }
@@ -264,10 +264,10 @@ impl Message {
                 }
             }
 
-            unsafe impl std::marker::Send for #raw_type {}
-            unsafe impl std::marker::Sync for #raw_type {}
+            unsafe impl ::std::marker::Send for #raw_type {}
+            unsafe impl ::std::marker::Sync for #raw_type {}
 
-            impl std::ops::Drop for #raw_type {
+            impl ::std::ops::Drop for #raw_type {
                 fn drop(&mut self) {
                     unsafe {
                         #fini_func(self as *mut _);
@@ -278,7 +278,7 @@ impl Message {
             #[allow(non_camel_case_types)]
             #[doc(hidden)]
             #[repr(C)]
-            #[derive(std::fmt::Debug)]
+            #[derive(::std::fmt::Debug)]
             pub struct #raw_ref_type {
                 #(#raw_ref_type_def_inner)*
             }
