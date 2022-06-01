@@ -72,7 +72,7 @@ impl Compiler {
         let link_lib_cmds = self
             .aments
             .iter()
-            .flat_map(|ament| ament.packages.iter().flat_map(|pkg| &pkg.libraries))
+            .flat_map(|ament| ament.packages.iter().flat_map(|pkg| pkg.library_names()))
             .map(|library_name| format!("cargo:rustc-link-lib=dylib={}", library_name));
 
         let commands: Vec<_> = chain!(link_search_cmds, link_lib_cmds).collect();

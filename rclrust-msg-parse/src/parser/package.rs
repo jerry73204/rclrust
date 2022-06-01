@@ -13,7 +13,7 @@ use itertools::Itertools as _;
 use path_macro::path;
 
 use super::{action::parse_action_file, message::parse_message_file, service::parse_service_file};
-use crate::types::Package;
+use crate::types::{Library, Package};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Ns {
@@ -60,28 +60,18 @@ where
 
     let packages: Vec<_> = load_rosidl_interfaces(&resource_dir)?
         .into_iter()
+        .filter(|line| !exclude_packages.contains(&line.pkg_name))
         .map(|pkg| -> Result<_> {
             let IdlPackage { pkg_name, lines } = pkg;
 
-            if exclude_packages.contains(&pkg_name) {
-                return Ok(None);
-            }
-
-            let libraries = vec![
-                format!("{}__rosidl_generator_c", pkg_name),
-                format!("{}__rosidl_typesupport_c", pkg_name),
-                format!("{}__rosidl_typesupport_introspection_c", pkg_name),
-            ];
             let mut msgs = vec![];
             let mut srvs = vec![];
             let mut actions = vec![];
             let mut share_suffixes = vec![];
-            let mut include_suffixes = vec![
-                path!(&pkg_name / "msg" / "rosidl_generator_c__visibility_control.h"),
-                path!(
-                    &pkg_name / "msg" / "rosidl_typesupport_introspection_c__visibility_control.h"
-                ),
-            ];
+            let mut generator_include_suffixes = vec![];
+            let mut generator_source_suffixes = vec![];
+            let mut typesupport_include_suffixes = vec![];
+            let mut typesupport_source_suffixes = vec![];
 
             lines.into_iter().try_for_each(|idl_line| -> Result<_> {
                 let camel_name = idl_line.name();
@@ -90,8 +80,20 @@ where
 
                 match ns {
                     Ns::Msg => {
-                        let include_suffix = path!(&pkg_name / "msg" / format!("{}.h", snake_name));
-                        include_suffixes.push(include_suffix);
+                        let detail_dir = path!(pkg_name / "msg" / "detail");
+
+                        generator_include_suffixes.extend([
+                            path!(detail_dir / format!("{}__struct.h", snake_name)),
+                            path!(detail_dir / format!("{}__functions.h", snake_name)),
+                        ]);
+                        generator_source_suffixes
+                            .extend([path!(detail_dir / format!("{}__functions.c", snake_name))]);
+                        typesupport_include_suffixes.extend([path!(
+                            detail_dir / format!("{}__type_support.h", snake_name)
+                        )]);
+                        typesupport_source_suffixes.extend([path!(
+                            detail_dir / format!("{}__type_support.c", snake_name)
+                        )]);
 
                         let share_suffix = path!(&pkg_name / "msg" / &*file_name);
                         let idl_path = path!(share_dir / share_suffix);
@@ -104,8 +106,20 @@ where
                         msgs.push(msg);
                     }
                     Ns::Srv => {
-                        let include_suffix = path!(&pkg_name / "srv" / format!("{}.h", snake_name));
-                        include_suffixes.push(include_suffix);
+                        let detail_dir = path!(pkg_name / "srv" / "detail");
+
+                        generator_include_suffixes.extend([
+                            path!(detail_dir / format!("{}__struct.h", snake_name)),
+                            path!(detail_dir / format!("{}__functions.h", snake_name)),
+                        ]);
+                        generator_source_suffixes
+                            .extend([path!(detail_dir / format!("{}__functions.c", snake_name))]);
+                        typesupport_include_suffixes.extend([path!(
+                            detail_dir / format!("{}__type_support.h", snake_name)
+                        )]);
+                        typesupport_source_suffixes.extend([path!(
+                            detail_dir / format!("{}__type_support.c", snake_name)
+                        )]);
 
                         let share_suffix = path!(&pkg_name / "srv" / &*file_name);
                         let idl_path = path!(share_dir / share_suffix);
@@ -118,15 +132,25 @@ where
                         srvs.push(srv);
                     }
                     Ns::Action => {
-                        let include_suffix =
-                            path!(&pkg_name / "action" / format!("{}.h", snake_name));
-                        include_suffixes.push(include_suffix);
+                        let detail_dir = path!(pkg_name / "action" / "detail");
+
+                        generator_include_suffixes.extend([
+                            path!(detail_dir / format!("{}__struct.h", snake_name)),
+                            path!(detail_dir / format!("{}__functions.h", snake_name)),
+                        ]);
+                        generator_source_suffixes
+                            .extend([path!(detail_dir / format!("{}__functions.c", snake_name))]);
+                        typesupport_include_suffixes.extend([path!(
+                            detail_dir / format!("{}__type_support.h", snake_name)
+                        )]);
+                        typesupport_source_suffixes.extend([path!(
+                            detail_dir / format!("{}__type_support.c", snake_name)
+                        )]);
 
                         let share_suffix = path!(&pkg_name / "action" / &*file_name);
                         let idl_path = path!(share_dir / share_suffix);
                         share_suffixes.push(share_suffix);
 
-                        // panic!("{}", action_path.display());
                         let action =
                             parse_action_file(&pkg_name, &idl_path).with_context(|| {
                                 anyhow!("unable to parse file '{}'", idl_path.display())
@@ -138,14 +162,29 @@ where
                 Ok(())
             })?;
 
+            let rosidl_generator_c_lib = Library {
+                library_name: format!("{}__rosidl_generator_c", pkg_name),
+                include_suffixes: generator_include_suffixes,
+                source_suffixes: generator_source_suffixes,
+            };
+            let rosidl_typesupport_c_lib = Library {
+                library_name: format!("{}__rosidl_typesupport_c", pkg_name),
+                include_suffixes: typesupport_include_suffixes,
+                source_suffixes: typesupport_source_suffixes,
+            };
             let package = Package {
                 name: pkg_name,
                 msgs,
                 srvs,
                 actions,
-                include_suffixes,
                 share_suffixes,
-                libraries,
+                rosidl_generator_c_lib,
+                rosidl_typesupport_c_lib,
+                // rosidl_typesupport_instrospection_c_lib: Library {
+                //     library_name: format!("{}__rosidl_typesupport_introspection_c", pkg_name),
+                //     include_suffixes: todo!(),
+                //     source_suffixes: todo!(),
+                // },
             };
 
             Ok(Some(package))
