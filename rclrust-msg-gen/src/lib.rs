@@ -5,6 +5,8 @@
     clippy::nursery
 )]
 
-mod compile;
+pub mod compiler;
+pub mod config;
 
-pub use crate::compile::*;
+pub use compiler::*;
+pub use config::*;

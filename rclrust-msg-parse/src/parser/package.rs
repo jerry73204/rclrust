@@ -84,13 +84,13 @@ where
             ];
 
             lines.into_iter().try_for_each(|idl_line| -> Result<_> {
-                let idl_name = idl_line.name();
+                let camel_name = idl_line.name();
+                let snake_name = camel2snake(camel_name);
                 let IdlLine { ns, file_name } = &idl_line;
 
                 match ns {
                     Ns::Msg => {
-                        let include_suffix =
-                            path!(&pkg_name / "msg" / format!("{}.h", camel2snake(idl_name)));
+                        let include_suffix = path!(&pkg_name / "msg" / format!("{}.h", snake_name));
                         include_suffixes.push(include_suffix);
 
                         let share_suffix = path!(&pkg_name / "msg" / &*file_name);
@@ -104,8 +104,7 @@ where
                         msgs.push(msg);
                     }
                     Ns::Srv => {
-                        let include_suffix =
-                            path!(&pkg_name / "srv" / format!("{}.h", camel2snake(idl_name)));
+                        let include_suffix = path!(&pkg_name / "srv" / format!("{}.h", snake_name));
                         include_suffixes.push(include_suffix);
 
                         let share_suffix = path!(&pkg_name / "srv" / &*file_name);
@@ -120,7 +119,7 @@ where
                     }
                     Ns::Action => {
                         let include_suffix =
-                            path!(&pkg_name / "action" / format!("{}.h", camel2snake(idl_name)));
+                            path!(&pkg_name / "action" / format!("{}.h", snake_name));
                         include_suffixes.push(include_suffix);
 
                         let share_suffix = path!(&pkg_name / "action" / &*file_name);
