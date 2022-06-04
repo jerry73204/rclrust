@@ -139,11 +139,11 @@ impl Message {
 
         let func_prefix = format!("{}__{}__{}", self.package, namespace, self.name);
 
-        let typesupport_c_lib = format!("{}__rosidl_typesupport_c", self.package);
-        let type_supprt_func = format_ident!(
-            "rosidl_typesupport_c__get_message_type_support_handle__{}",
-            func_prefix
-        );
+        // let typesupport_c_lib = format!("{}__rosidl_typesupport_c", self.package);
+        // let type_supprt_func = format_ident!(
+        //     "rosidl_typesupport_c__get_message_type_support_handle__{}",
+        //     func_prefix
+        // );
 
         let generator_c_lib = format!("{}__rosidl_generator_c", self.package);
         let init_func = format_ident!("{}__init", func_prefix);
@@ -181,7 +181,7 @@ impl Message {
         quote! {
             #[allow(unused_imports)]
             use ::std::convert::TryInto as _;
-            use ::std::os::raw::c_void;
+            // use ::std::os::raw::c_void;
 
             #[allow(unused_imports)]
             use ::rclrust_msg_types::InternalDefault as _;
@@ -196,20 +196,20 @@ impl Message {
                 #(#constants_def_inner)*
             }
 
-            #[link(name = #typesupport_c_lib)]
-            extern "C" {
-                fn #type_supprt_func() -> *const c_void;
-            }
+            // #[link(name = #typesupport_c_lib)]
+            // extern "C" {
+            //     fn #type_supprt_func() -> *const c_void;
+            // }
 
             impl ::rclrust_msg_types::MessageT for #rust_type {
                 type Raw = #raw_type;
                 type RawRef = #raw_ref_type;
 
-                fn type_support() -> *const c_void {
-                    unsafe {
-                        #type_supprt_func()
-                    }
-                }
+                // fn type_support() -> *const c_void {
+                //     unsafe {
+                //         #type_supprt_func()
+                //     }
+                // }
             }
 
             impl ::rclrust_msg_types::InternalDefault for #rust_type {
@@ -297,7 +297,7 @@ impl Message {
             #[cfg(test)]
             mod test {
                 use super::*;
-                use ::rclrust_msg_types::MessageT;
+                // use ::rclrust_msg_types::MessageT;
 
                 #[test]
                 fn test_rust_default() {
@@ -309,11 +309,11 @@ impl Message {
                     let _ = #raw_type::default();
                 }
 
-                #[test]
-                fn test_type_support() {
-                    let ptr = #rust_type::type_support();
-                    assert!(!ptr.is_null());
-                }
+                // #[test]
+                // fn test_type_support() {
+                //     let ptr = #rust_type::type_support();
+                //     assert!(!ptr.is_null());
+                // }
             }
 
         }

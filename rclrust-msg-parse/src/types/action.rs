@@ -152,13 +152,13 @@ impl Action {
         let get_result_type = format_ident!("{}_GetResult", self.name);
         let feeback_message_type = format_ident!("{}_FeedbackMessage", self.name);
 
-        let typesupport_c_lib = format!("{}__rosidl_typesupport_c", self.package);
-        let type_supprt_func = format_ident!(
-            "rosidl_typesupport_c__get_action_type_support_handle__{}__{}__{}",
-            self.package,
-            namespace,
-            self.name
-        );
+        // let typesupport_c_lib = format!("{}__rosidl_typesupport_c", self.package);
+        // let type_supprt_func = format_ident!(
+        //     "rosidl_typesupport_c__get_action_type_support_handle__{}__{}__{}",
+        //     self.package,
+        //     namespace,
+        //     self.name
+        // );
 
         let goal_body = self.goal.token_stream(namespace);
         let result_body = self.result.token_stream(namespace);
@@ -168,7 +168,7 @@ impl Action {
         let feedback_message_body = self.feedback_message_msg().token_stream(namespace);
 
         quote! {
-            use ::std::os::raw::c_void;
+            // use ::std::os::raw::c_void;
 
             pub use self::goal::*;
             pub use self::result::*;
@@ -181,10 +181,10 @@ impl Action {
             #[derive(::std::fmt::Debug)]
             pub struct #action_type;
 
-            #[link(name = #typesupport_c_lib)]
-            extern "C" {
-                fn #type_supprt_func() -> *const c_void;
-            }
+            // #[link(name = #typesupport_c_lib)]
+            // extern "C" {
+            //     fn #type_supprt_func() -> *const c_void;
+            // }
 
             impl ::rclrust_msg_types::ActionT for #action_type {
                 type Goal = #goal_type;
@@ -194,11 +194,11 @@ impl Action {
                 type GetResult = #get_result_type;
                 type FeedbackMessage = #feeback_message_type;
 
-                fn type_support() -> *const c_void {
-                    unsafe {
-                        #type_supprt_func()
-                    }
-                }
+                // fn type_support() -> *const c_void {
+                //     unsafe {
+                //         #type_supprt_func()
+                //     }
+                // }
             }
 
             mod goal {
@@ -225,17 +225,17 @@ impl Action {
                 #feedback_message_body
             }  // mod feedback_message
 
-            #[cfg(test)]
-            mod test {
-                use super::*;
-                use ::rclrust_msg_types::ActionT;
+            // #[cfg(test)]
+            // mod test {
+            //     use super::*;
+            //     use ::rclrust_msg_types::ActionT;
 
-                #[test]
-                fn test_type_support() {
-                    let ptr = #action_type::type_support();
-                    assert!(!ptr.is_null());
-                }
-            }
+            //     #[test]
+            //     fn test_type_support() {
+            //         let ptr = #action_type::type_support();
+            //         assert!(!ptr.is_null());
+            //     }
+            // }
         }
     }
 }

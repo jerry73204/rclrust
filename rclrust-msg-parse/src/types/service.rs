@@ -33,19 +33,19 @@ impl Service {
         let req_type = format_ident!("{}_Request", self.name);
         let res_type = format_ident!("{}_Response", self.name);
 
-        let typesupport_c_lib = format!("{}__rosidl_typesupport_c", self.package);
-        let type_supprt_func = format_ident!(
-            "rosidl_typesupport_c__get_service_type_support_handle__{}__{}__{}",
-            self.package,
-            namespace,
-            self.name
-        );
+        // let typesupport_c_lib = format!("{}__rosidl_typesupport_c", self.package);
+        // let type_supprt_func = format_ident!(
+        //     "rosidl_typesupport_c__get_service_type_support_handle__{}__{}__{}",
+        //     self.package,
+        //     namespace,
+        //     self.name
+        // );
 
         let request_body = self.request.token_stream(namespace);
         let response_body = self.response.token_stream(namespace);
 
         quote! {
-            use ::std::os::raw::c_void;
+            // use ::std::os::raw::c_void;
 
             pub use self::request::*;
             pub use self::response::*;
@@ -54,20 +54,20 @@ impl Service {
             #[derive(::std::fmt::Debug)]
             pub struct #srv_type;
 
-            #[link(name = #typesupport_c_lib)]
-            extern "C" {
-                fn #type_supprt_func() -> *const c_void;
-            }
+            // #[link(name = #typesupport_c_lib)]
+            // extern "C" {
+            //     fn #type_supprt_func() -> *const c_void;
+            // }
 
             impl ::rclrust_msg_types::ServiceT for #srv_type {
                 type Request = #req_type;
                 type Response = #res_type;
 
-                fn type_support() -> *const c_void {
-                    unsafe {
-                        #type_supprt_func()
-                    }
-                }
+                // fn type_support() -> *const c_void {
+                //     unsafe {
+                //         #type_supprt_func()
+                //     }
+                // }
             }
 
             mod request {
@@ -78,17 +78,17 @@ impl Service {
                 #response_body
             }  // mod response
 
-            #[cfg(test)]
-            mod test {
-                use super::*;
-                use ::rclrust_msg_types::ServiceT;
+            // #[cfg(test)]
+            // mod test {
+            //     use super::*;
+            //     use ::rclrust_msg_types::ServiceT;
 
-                #[test]
-                fn test_type_support() {
-                    let ptr = #srv_type::type_support();
-                    assert!(!ptr.is_null());
-                }
-            }
+            //     #[test]
+            //     fn test_type_support() {
+            //         let ptr = #srv_type::type_support();
+            //         assert!(!ptr.is_null());
+            //     }
+            // }
         }
     }
 }

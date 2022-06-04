@@ -1,4 +1,4 @@
-use std::{convert::TryInto, os::raw::c_void};
+use std::convert::TryInto;
 
 use array_init::array_init;
 use widestring::U16String;
@@ -7,7 +7,7 @@ pub trait MessageT: Default + Send + Sync {
     type Raw: FFIToRust<Target = Self> + Default + Drop + Send + Sync;
     type RawRef: FFIFromRust<From = Self>;
 
-    fn type_support() -> *const c_void;
+    // fn type_support() -> *const c_void;
 
     unsafe fn from_raw(from: &Self::Raw) -> Self {
         from.to_rust()
@@ -22,7 +22,7 @@ pub trait ServiceT: Send {
     type Request: MessageT;
     type Response: MessageT;
 
-    fn type_support() -> *const c_void;
+    // fn type_support() -> *const c_void;
 }
 
 pub trait ActionT: Send {
@@ -33,7 +33,7 @@ pub trait ActionT: Send {
     type GetResult: ServiceT;
     type FeedbackMessage: MessageT;
 
-    fn type_support() -> *const c_void;
+    // fn type_support() -> *const c_void;
 }
 
 // I was going to use `std::default::Default`, however generic arrays do not implement `std::default::Default`.

@@ -180,11 +180,6 @@ where
                 share_suffixes,
                 rosidl_generator_c_lib,
                 rosidl_typesupport_c_lib,
-                // rosidl_typesupport_instrospection_c_lib: Library {
-                //     library_name: format!("{}__rosidl_typesupport_introspection_c", pkg_name),
-                //     include_suffixes: todo!(),
-                //     source_suffixes: todo!(),
-                // },
             };
 
             Ok(Some(package))
