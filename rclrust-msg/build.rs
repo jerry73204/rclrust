@@ -2,6 +2,10 @@ use anyhow::Result;
 use rclrust_msg_gen::CompileConfig;
 
 fn main() -> Result<()> {
-    CompileConfig::new_ros2().run()?;
+    let mut compiler = CompileConfig::new_ros2()
+        .exclude_package("example_interfaces")
+        .build()?;
+    compiler.codegen()?;
+    compiler.static_link()?;
     Ok(())
 }

@@ -1,9 +1,9 @@
 use std::{fs, path::PathBuf};
 
-use anyhow::Result;
-use itertools::chain;
+use anyhow::{Context, Result};
+use itertools::{chain, Itertools as _};
 use quote::quote;
-use rclrust_msg_parse::parser::package::AmentPrefix;
+use rclrust_msg_parse::{parser::package::AmentPrefix, types::Library};
 
 use crate::config::CompileConfig;
 
@@ -77,6 +77,56 @@ impl Compiler {
 
         let commands: Vec<_> = chain!(link_search_cmds, link_lib_cmds).collect();
         self.extend_build_script(commands);
+    }
+
+    pub fn static_link(&mut self) -> Result<()> {
+        let commands: Vec<_> = self
+            .aments
+            .iter()
+            .flat_map(|ament| ament.packages.iter().map(move |pkg| (ament, pkg)))
+            .map(|(ament, pkg)| -> Result<_> {
+                let include_dir = &ament.include_dir;
+
+                let compile_lib = |lib: &Library| -> Result<_> {
+                    let source_files = lib
+                        .source_suffixes
+                        .iter()
+                        .map(|suffix| include_dir.join(suffix));
+                    let out_dir = self.config.output_dir.join(&lib.library_name);
+                    let commands = [
+                        format!("cargo:rustc-link-search={}", out_dir.display()),
+                        format!("cargo:rustc-link-lib={}", lib.library_name),
+                    ];
+
+                    cc::Build::new()
+                        .cargo_metadata(false)
+                        .include(include_dir)
+                        .files(source_files)
+                        .out_dir(out_dir)
+                        .try_compile(&lib.library_name)
+                        .with_context(|| {
+                            format!("unable to compile static library '{}'", lib.library_name)
+                        })?;
+
+                    Ok(commands)
+                };
+
+                // HACK: Disable the build script in cc but print the build script manually.
+                // It avoids `-Wl,--whole-archive` option when using `cargo:rustc-link-lib=static=NAME`.
+                // It prints `cargo:rustc-link-lib=NAME` instead.
+                // https://github.com/rust-lang/rust/blob/stable/RELEASES.md#compatibility-notes
+                let commands1 = compile_lib(&pkg.rosidl_generator_c_lib)?;
+                let commands2 = compile_lib(&pkg.rosidl_typesupport_c_lib)?;
+                let commands = chain!(commands1, commands2);
+
+                Ok(commands)
+            })
+            .flatten_ok()
+            .try_collect()?;
+
+        self.extend_build_script(commands);
+
+        Ok(())
     }
 
     /// Get a reference to the compiler's build script.

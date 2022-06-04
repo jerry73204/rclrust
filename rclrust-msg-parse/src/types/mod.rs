@@ -11,6 +11,5 @@ pub use action::Action;
 pub use constant::ConstantType;
 pub use member::MemberType;
 pub use message::{Constant, Member, Message};
-pub use package::Package;
-pub use package::Library;
+pub use package::{Library, Package};
 pub use service::Service;

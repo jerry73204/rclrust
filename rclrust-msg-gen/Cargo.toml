@@ -22,6 +22,7 @@ path_macro = "1.0.0"
 newline-converter = "0.2.0"
 convert_case = "0.5.0"
 rclrust-msg-parse = { version = "0.1.0", path = "../rclrust-msg-parse" }
+cc = "1.0.73"
 
 [dev-dependencies]
 rclrust-msg-types = { version = "0.1.0", path = "../rclrust-msg-types" }
