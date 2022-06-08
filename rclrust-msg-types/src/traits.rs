@@ -4,18 +4,18 @@ use array_init::array_init;
 use widestring::U16String;
 
 pub trait MessageT: Default + Send + Sync {
-    type Raw: FFIToRust<Target = Self> + Default + Drop + Send + Sync;
-    type RawRef: FFIFromRust<From = Self>;
+    // type Raw: FFIToRust<Target = Self> + Default + Drop + Send + Sync;
+    // type RawRef: FFIFromRust<From = Self>;
 
     // fn type_support() -> *const c_void;
 
-    unsafe fn from_raw(from: &Self::Raw) -> Self {
-        from.to_rust()
-    }
+    // unsafe fn from_raw(from: &Self::Raw) -> Self {
+    //     from.to_rust()
+    // }
 
-    unsafe fn to_raw_ref(&self) -> Self::RawRef {
-        Self::RawRef::from_rust(self)
-    }
+    // unsafe fn to_raw_ref(&self) -> Self::RawRef {
+    //     Self::RawRef::from_rust(self)
+    // }
 }
 
 pub trait ServiceT: Send {
