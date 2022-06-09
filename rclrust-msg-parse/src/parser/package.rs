@@ -46,153 +46,173 @@ pub struct AmentPrefix {
     pub include_dir: PathBuf,
 }
 
-pub fn load_ament_prefix<P, S>(root_dir: P, exclude_packages: &HashSet<S>) -> Result<AmentPrefix>
-where
-    P: AsRef<Path>,
-    S: Borrow<str> + Hash + Eq,
-{
-    let root_dir = root_dir.as_ref();
-    let resource_dir =
-        path!(root_dir / "share" / "ament_index" / "resource_index" / "rosidl_interfaces");
-    let lib_dir = root_dir.join("lib");
-    let include_dir = root_dir.join("include");
-    let share_dir = root_dir.join("share");
+impl AmentPrefix {
+    pub fn load<P, S>(root_dir: P, exclude_packages: &HashSet<S>) -> Result<Self>
+    where
+        P: AsRef<Path>,
+        S: Borrow<str> + Hash + Eq,
+    {
+        let root_dir = root_dir.as_ref();
+        let resource_dir =
+            path!(root_dir / "share" / "ament_index" / "resource_index" / "rosidl_interfaces");
+        let lib_dir = root_dir.join("lib");
+        let include_dir = root_dir.join("include");
+        let share_dir = root_dir.join("share");
 
-    let packages: Vec<_> = load_rosidl_interfaces(&resource_dir)?
-        .into_iter()
-        .filter(|line| !exclude_packages.contains(&line.pkg_name))
-        .map(|pkg| -> Result<_> {
-            let IdlPackage { pkg_name, lines } = pkg;
+        let packages: Vec<_> =
+            load_rosidl_interfaces(&resource_dir)?
+                .into_iter()
+                .filter(|line| !exclude_packages.contains(&line.pkg_name))
+                .map(|pkg| -> Result<_> {
+                    let IdlPackage { pkg_name, lines } = pkg;
 
-            let mut msgs = vec![];
-            let mut srvs = vec![];
-            let mut actions = vec![];
-            let mut share_suffixes = vec![];
-            let mut generator_include_suffixes = vec![];
-            let mut generator_source_suffixes = vec![];
-            let mut typesupport_include_suffixes = vec![];
-            let mut typesupport_source_suffixes = vec![];
+                    let mut msgs = vec![];
+                    let mut srvs = vec![];
+                    let mut actions = vec![];
+                    let mut share_suffixes = vec![];
+                    let mut generator_include_suffixes = vec![];
+                    let mut generator_source_suffixes = vec![];
+                    let mut typesupport_include_suffixes = vec![];
+                    let mut typesupport_source_suffixes = vec![];
 
-            lines.into_iter().try_for_each(|idl_line| -> Result<_> {
-                let camel_name = idl_line.name();
-                let snake_name = camel2snake(camel_name);
-                let IdlLine { ns, file_name } = &idl_line;
+                    lines.into_iter().try_for_each(|idl_line| -> Result<_> {
+                        let camel_name = idl_line.name();
+                        let snake_name = camel2snake(camel_name);
+                        let IdlLine { ns, file_name } = &idl_line;
 
-                match ns {
-                    Ns::Msg => {
-                        let detail_dir = path!(pkg_name / "msg" / "detail");
+                        match ns {
+                            Ns::Msg => {
+                                let detail_dir = path!(pkg_name / "msg" / "detail");
 
-                        generator_include_suffixes.extend([
-                            path!(detail_dir / format!("{}__struct.h", snake_name)),
-                            path!(detail_dir / format!("{}__functions.h", snake_name)),
-                        ]);
-                        generator_source_suffixes
-                            .extend([path!(detail_dir / format!("{}__functions.c", snake_name))]);
-                        typesupport_include_suffixes.extend([path!(
-                            detail_dir / format!("{}__type_support.h", snake_name)
-                        )]);
-                        typesupport_source_suffixes.extend([path!(
-                            detail_dir / format!("{}__type_support.c", snake_name)
-                        )]);
+                                generator_include_suffixes.extend([
+                                    path!(detail_dir / format!("{}__struct.h", snake_name)),
+                                    path!(detail_dir / format!("{}__functions.h", snake_name)),
+                                ]);
+                                generator_source_suffixes.extend([path!(
+                                    detail_dir / format!("{}__functions.c", snake_name)
+                                )]);
+                                typesupport_include_suffixes.extend([path!(
+                                    detail_dir / format!("{}__type_support.h", snake_name)
+                                )]);
+                                typesupport_source_suffixes.extend([path!(
+                                    detail_dir / format!("{}__type_support.c", snake_name)
+                                )]);
 
-                        let share_suffix = path!(&pkg_name / "msg" / &*file_name);
-                        let idl_path = path!(share_dir / share_suffix);
-                        share_suffixes.push(share_suffix);
+                                let share_suffix = path!(&pkg_name / "msg" / &*file_name);
+                                let idl_path = path!(share_dir / share_suffix);
+                                share_suffixes.push(share_suffix);
 
-                        // panic!("{}", msg_path.display());
-                        let msg = parse_message_file(&pkg_name, &idl_path).with_context(|| {
-                            anyhow!("unable to parse file '{}'", idl_path.display())
-                        })?;
-                        msgs.push(msg);
-                    }
-                    Ns::Srv => {
-                        let detail_dir = path!(pkg_name / "srv" / "detail");
+                                // panic!("{}", msg_path.display());
+                                let msg = parse_message_file(&pkg_name, &idl_path).with_context(
+                                    || anyhow!("unable to parse file '{}'", idl_path.display()),
+                                )?;
+                                msgs.push(msg);
+                            }
+                            Ns::Srv => {
+                                let detail_dir = path!(pkg_name / "srv" / "detail");
 
-                        generator_include_suffixes.extend([
-                            path!(detail_dir / format!("{}__struct.h", snake_name)),
-                            path!(detail_dir / format!("{}__functions.h", snake_name)),
-                        ]);
-                        generator_source_suffixes
-                            .extend([path!(detail_dir / format!("{}__functions.c", snake_name))]);
-                        typesupport_include_suffixes.extend([path!(
-                            detail_dir / format!("{}__type_support.h", snake_name)
-                        )]);
-                        typesupport_source_suffixes.extend([path!(
-                            detail_dir / format!("{}__type_support.c", snake_name)
-                        )]);
+                                generator_include_suffixes.extend([
+                                    path!(detail_dir / format!("{}__struct.h", snake_name)),
+                                    path!(detail_dir / format!("{}__functions.h", snake_name)),
+                                ]);
+                                generator_source_suffixes.extend([path!(
+                                    detail_dir / format!("{}__functions.c", snake_name)
+                                )]);
+                                typesupport_include_suffixes.extend([path!(
+                                    detail_dir / format!("{}__type_support.h", snake_name)
+                                )]);
+                                typesupport_source_suffixes.extend([path!(
+                                    detail_dir / format!("{}__type_support.c", snake_name)
+                                )]);
 
-                        let share_suffix = path!(&pkg_name / "srv" / &*file_name);
-                        let idl_path = path!(share_dir / share_suffix);
-                        share_suffixes.push(share_suffix);
+                                let share_suffix = path!(&pkg_name / "srv" / &*file_name);
+                                let idl_path = path!(share_dir / share_suffix);
+                                share_suffixes.push(share_suffix);
 
-                        // panic!("{}", srv_path.display());
-                        let srv = parse_service_file(&pkg_name, &idl_path).with_context(|| {
-                            anyhow!("unable to parse file '{}'", idl_path.display())
-                        })?;
-                        srvs.push(srv);
-                    }
-                    Ns::Action => {
-                        let detail_dir = path!(pkg_name / "action" / "detail");
+                                // panic!("{}", srv_path.display());
+                                let srv = parse_service_file(&pkg_name, &idl_path).with_context(
+                                    || anyhow!("unable to parse file '{}'", idl_path.display()),
+                                )?;
+                                srvs.push(srv);
+                            }
+                            Ns::Action => {
+                                let detail_dir = path!(pkg_name / "action" / "detail");
 
-                        generator_include_suffixes.extend([
-                            path!(detail_dir / format!("{}__struct.h", snake_name)),
-                            path!(detail_dir / format!("{}__functions.h", snake_name)),
-                        ]);
-                        generator_source_suffixes
-                            .extend([path!(detail_dir / format!("{}__functions.c", snake_name))]);
-                        typesupport_include_suffixes.extend([path!(
-                            detail_dir / format!("{}__type_support.h", snake_name)
-                        )]);
-                        typesupport_source_suffixes.extend([path!(
-                            detail_dir / format!("{}__type_support.c", snake_name)
-                        )]);
+                                generator_include_suffixes.extend([
+                                    path!(detail_dir / format!("{}__struct.h", snake_name)),
+                                    path!(detail_dir / format!("{}__functions.h", snake_name)),
+                                ]);
+                                generator_source_suffixes.extend([path!(
+                                    detail_dir / format!("{}__functions.c", snake_name)
+                                )]);
+                                typesupport_include_suffixes.extend([path!(
+                                    detail_dir / format!("{}__type_support.h", snake_name)
+                                )]);
+                                typesupport_source_suffixes.extend([path!(
+                                    detail_dir / format!("{}__type_support.c", snake_name)
+                                )]);
 
-                        let share_suffix = path!(&pkg_name / "action" / &*file_name);
-                        let idl_path = path!(share_dir / share_suffix);
-                        share_suffixes.push(share_suffix);
+                                let share_suffix = path!(&pkg_name / "action" / &*file_name);
+                                let idl_path = path!(share_dir / share_suffix);
+                                share_suffixes.push(share_suffix);
 
-                        let action =
-                            parse_action_file(&pkg_name, &idl_path).with_context(|| {
-                                anyhow!("unable to parse file '{}'", idl_path.display())
-                            })?;
-                        actions.push(action);
-                    }
-                }
+                                let action =
+                                    parse_action_file(&pkg_name, &idl_path).with_context(|| {
+                                        anyhow!("unable to parse file '{}'", idl_path.display())
+                                    })?;
+                                actions.push(action);
+                            }
+                        }
 
-                Ok(())
-            })?;
+                        Ok(())
+                    })?;
 
-            let rosidl_generator_c_lib = Library {
-                library_name: format!("{}__rosidl_generator_c", pkg_name),
-                include_suffixes: generator_include_suffixes,
-                source_suffixes: generator_source_suffixes,
-            };
-            let rosidl_typesupport_c_lib = Library {
-                library_name: format!("{}__rosidl_typesupport_c", pkg_name),
-                include_suffixes: typesupport_include_suffixes,
-                source_suffixes: typesupport_source_suffixes,
-            };
-            let package = Package {
-                name: pkg_name,
-                msgs,
-                srvs,
-                actions,
-                share_suffixes,
-                rosidl_generator_c_lib,
-                rosidl_typesupport_c_lib,
-            };
+                    let rosidl_generator_c_lib = Library {
+                        library_name: format!("{}__rosidl_generator_c", pkg_name),
+                        include_suffixes: generator_include_suffixes,
+                        source_suffixes: generator_source_suffixes,
+                    };
+                    let rosidl_typesupport_c_lib = Library {
+                        library_name: format!("{}__rosidl_typesupport_c", pkg_name),
+                        include_suffixes: typesupport_include_suffixes,
+                        source_suffixes: typesupport_source_suffixes,
+                    };
+                    let package = Package {
+                        name: pkg_name,
+                        msgs,
+                        srvs,
+                        actions,
+                        share_suffixes,
+                        rosidl_generator_c_lib,
+                        rosidl_typesupport_c_lib,
+                    };
 
-            Ok(Some(package))
+                    Ok(Some(package))
+                })
+                .flatten_ok()
+                .try_collect()?;
+
+        Ok(Self {
+            packages,
+            resource_dir,
+            lib_dir,
+            include_dir,
         })
-        .flatten_ok()
-        .try_collect()?;
+    }
+}
 
-    Ok(AmentPrefix {
-        packages,
-        resource_dir,
-        lib_dir,
-        include_dir,
-    })
+#[derive(Debug, Clone)]
+pub struct PackageDir {
+    pub packages: Package,
+}
+
+impl PackageDir {
+    pub fn load<P>(dir: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        todo!();
+    }
 }
 
 fn load_rosidl_interfaces<P>(dir: P) -> Result<Vec<IdlPackage>>
