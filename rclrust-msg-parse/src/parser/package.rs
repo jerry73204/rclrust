@@ -201,20 +201,6 @@ impl AmentPrefix {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PackageDir {
-    pub packages: Package,
-}
-
-impl PackageDir {
-    pub fn load<P>(dir: P) -> Result<Self>
-    where
-        P: AsRef<Path>,
-    {
-        todo!();
-    }
-}
-
 fn load_rosidl_interfaces<P>(dir: P) -> Result<Vec<IdlPackage>>
 where
     P: AsRef<Path>,

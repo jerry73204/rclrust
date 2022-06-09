@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{anyhow, ensure, Context as _, Result};
 use itertools::{chain, Itertools as _};
-use rclrust_msg_parse::{parser::package::AmentPrefix, PackageDir};
+use rclrust_msg_parse::parser::package::AmentPrefix;
 
 use crate::compiler::Compiler;
 
@@ -18,7 +18,6 @@ pub struct CompileConfig {
     pub(crate) link_rpath: bool,
     pub(crate) emit_build_script: bool,
     pub(crate) ament_prefix_paths: Vec<PathBuf>,
-    pub(crate) package_dirs: Vec<PathBuf>,
     pub(crate) exclude_packages: HashSet<String>,
     pub(crate) output_dir: PathBuf,
 }
@@ -32,7 +31,6 @@ impl CompileConfig {
             exclude_packages: HashSet::new(),
             link_rpath: false,
             emit_build_script: false,
-            package_dirs: vec![],
         }
     }
 
@@ -47,7 +45,6 @@ impl CompileConfig {
                 .collect(),
             link_rpath: true,
             emit_build_script: true,
-            package_dirs: vec![],
         }
     }
 
@@ -75,24 +72,6 @@ impl CompileConfig {
         I: IntoIterator<Item = P>,
     {
         self.ament_prefix_paths
-            .extend(dirs.into_iter().map(|dir| dir.as_ref().to_owned()));
-        self
-    }
-
-    pub fn msg_dir<P>(mut self, dir: P) -> Self
-    where
-        P: AsRef<Path>,
-    {
-        self.package_dirs.push(dir.as_ref().to_owned());
-        self
-    }
-
-    pub fn package_dir<P, I>(mut self, dirs: I) -> Self
-    where
-        P: AsRef<Path>,
-        I: IntoIterator<Item = P>,
-    {
-        self.package_dirs
             .extend(dirs.into_iter().map(|dir| dir.as_ref().to_owned()));
         self
     }
@@ -199,18 +178,6 @@ impl CompileConfig {
             .map(|path| AmentPrefix::load(path, &self.exclude_packages))
             .try_collect()?;
         Ok(aments)
-    }
-
-    fn load_package_dirs<B>(&self, build_commands: &mut B) -> Result<Vec<AmentPrefix>>
-    where
-        B: Extend<String>,
-    {
-        let aments: Vec<_> = self
-            .package_dirs
-            .iter()
-            .map(|dir| PackageDir::load(dir))
-            .try_collect()?;
-        todo!();
     }
 }
 
