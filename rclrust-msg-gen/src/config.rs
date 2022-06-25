@@ -115,11 +115,11 @@ impl CompileConfig {
         self
     }
 
-    pub fn type_attribute<P, A>(mut self, attribute: A) -> Result<Self>
+    pub fn type_attributes<A>(mut self, attributes: A) -> Result<Self>
     where
         A: AsRef<str>,
     {
-        let attrs: TypeAttributes = syn::parse_str(attribute.as_ref())?;
+        let attrs: TypeAttributes = syn::parse_str(attributes.as_ref())?;
         self.type_attributes.extend(attrs.attrs);
         Ok(self)
     }
