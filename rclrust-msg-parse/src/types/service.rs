@@ -1,4 +1,4 @@
-use heck::SnakeCase;
+use heck::ToSnakeCase as _;
 use quote::{format_ident, quote, ToTokens};
 
 use super::Message;
