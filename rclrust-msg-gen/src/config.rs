@@ -8,11 +8,11 @@ use anyhow::{anyhow, ensure, Context as _, Result};
 use itertools::{chain, Itertools as _};
 use rclrust_msg_parse::parser::package::AmentPrefix;
 
-use crate::compiler::Compiler;
+use crate::{compiler::Compiler, msg_path::MsgPath, parse::TypeAttributes};
 
 const DEFAULT_EXCLUDED_PACKAGES: &[&str] = &["libstatistics_collector"];
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct CompileConfig {
     pub(crate) search_env: bool,
     pub(crate) link_rpath: bool,
@@ -20,6 +20,7 @@ pub struct CompileConfig {
     pub(crate) ament_prefix_paths: Vec<PathBuf>,
     pub(crate) exclude_packages: HashSet<String>,
     pub(crate) output_dir: PathBuf,
+    pub(crate) type_attributes: Vec<syn::Attribute>,
 }
 
 impl CompileConfig {
@@ -31,6 +32,7 @@ impl CompileConfig {
             exclude_packages: HashSet::new(),
             link_rpath: false,
             emit_build_script: false,
+            type_attributes: vec![],
         }
     }
 
@@ -45,6 +47,7 @@ impl CompileConfig {
                 .collect(),
             link_rpath: true,
             emit_build_script: true,
+            type_attributes: vec![],
         }
     }
 
@@ -110,6 +113,15 @@ impl CompileConfig {
         self.exclude_packages
             .extend(packages.into_iter().map(|pkg| pkg.to_string()));
         self
+    }
+
+    pub fn type_attribute<P, A>(mut self, attribute: A) -> Result<Self>
+    where
+        A: AsRef<str>,
+    {
+        let attrs: TypeAttributes = syn::parse_str(attribute.as_ref())?;
+        self.type_attributes.extend(attrs.attrs);
+        Ok(self)
     }
 
     pub fn build(self) -> Result<Compiler> {

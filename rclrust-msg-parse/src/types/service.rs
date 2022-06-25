@@ -17,9 +17,13 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn token_stream_with_mod(&self, namespace: &str) -> impl ToTokens {
+    pub fn token_stream_with_mod(
+        &self,
+        namespace: &str,
+        type_attributes: Option<&[syn::Attribute]>,
+    ) -> impl ToTokens {
         let mod_name = format_ident!("_{}", self.name.to_snake_case());
-        let inner = self.token_stream(namespace);
+        let inner = self.token_stream(namespace, type_attributes);
         quote! {
             pub use #mod_name::*;
             mod #mod_name {
@@ -28,7 +32,11 @@ impl Service {
         }
     }
 
-    pub fn token_stream(&self, namespace: &str) -> impl ToTokens {
+    pub fn token_stream(
+        &self,
+        namespace: &str,
+        type_attributes: Option<&[syn::Attribute]>,
+    ) -> impl ToTokens {
         let srv_type = format_ident!("{}", self.name);
         let req_type = format_ident!("{}_Request", self.name);
         let res_type = format_ident!("{}_Response", self.name);
@@ -41,8 +49,14 @@ impl Service {
         //     self.name
         // );
 
-        let request_body = self.request.token_stream(namespace);
-        let response_body = self.response.token_stream(namespace);
+        let request_body = self.request.token_stream(namespace, type_attributes);
+        let response_body = self.response.token_stream(namespace, type_attributes);
+
+        let type_attributes = {
+            let type_attributes = type_attributes.into_iter().flatten();
+            let type_attributes = quote! { #(#type_attributes)* };
+            type_attributes
+        };
 
         quote! {
             // use ::std::os::raw::c_void;
@@ -52,6 +66,7 @@ impl Service {
 
             #[allow(non_camel_case_types)]
             #[derive(::std::fmt::Debug)]
+            #type_attributes
             pub struct #srv_type;
 
             // #[link(name = #typesupport_c_lib)]

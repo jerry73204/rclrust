@@ -7,7 +7,6 @@ use rclrust_msg_parse::{parser::package::AmentPrefix, types::Library};
 
 use crate::config::CompileConfig;
 
-#[derive(Debug)]
 pub struct Compiler {
     pub(crate) aments: Vec<AmentPrefix>,
     pub(crate) config: CompileConfig,
@@ -36,7 +35,7 @@ impl Compiler {
             .aments
             .iter()
             .flat_map(|ament| &ament.packages)
-            .map(|pkg| pkg.token_stream(false));
+            .map(|pkg| pkg.token_stream(false, Some(&self.config.type_attributes)));
 
         let content = quote! {
             #(#mods)*

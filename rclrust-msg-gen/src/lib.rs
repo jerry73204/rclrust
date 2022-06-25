@@ -7,6 +7,8 @@
 
 pub mod compiler;
 pub mod config;
+mod msg_path;
+mod parse;
 
 pub use compiler::*;
 pub use config::*;

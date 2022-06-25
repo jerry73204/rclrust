@@ -30,13 +30,16 @@ impl Package {
         self.msgs.is_empty() && self.srvs.is_empty() && self.actions.is_empty()
     }
 
-    fn messages_block(&self) -> impl ToTokens {
+    fn messages_block(&self, type_attributes: Option<&[syn::Attribute]>) -> impl ToTokens {
         if self.msgs.is_empty() {
             quote! {
                 // empty msg
             }
         } else {
-            let items = self.msgs.iter().map(|v| v.token_stream_with_mod("msg"));
+            let items = self
+                .msgs
+                .iter()
+                .map(|v| v.token_stream_with_mod("msg", type_attributes));
             quote! {
                 pub mod msg {
                     #(#items)*
@@ -45,13 +48,16 @@ impl Package {
         }
     }
 
-    fn services_block(&self) -> impl ToTokens {
+    fn services_block(&self, type_attributes: Option<&[syn::Attribute]>) -> impl ToTokens {
         if self.srvs.is_empty() {
             quote! {
                 // empty srv
             }
         } else {
-            let items = self.srvs.iter().map(|v| v.token_stream_with_mod("srv"));
+            let items = self
+                .srvs
+                .iter()
+                .map(|v| v.token_stream_with_mod("srv", type_attributes));
             quote! {
                 pub mod srv {
                     #(#items)*
@@ -60,7 +66,7 @@ impl Package {
         }
     }
 
-    fn actions_block(&self) -> impl ToTokens {
+    fn actions_block(&self, type_attributes: Option<&[syn::Attribute]>) -> impl ToTokens {
         if self.actions.is_empty() {
             quote! {
                 // empty srv
@@ -69,7 +75,7 @@ impl Package {
             let items = self
                 .actions
                 .iter()
-                .map(|v| v.token_stream_with_mod("action"));
+                .map(|v| v.token_stream_with_mod("action", type_attributes));
             quote! {
                 pub mod action {
                     #(#items)*
@@ -78,11 +84,15 @@ impl Package {
         }
     }
 
-    pub fn token_stream(&self, body_only: bool) -> impl ToTokens {
+    pub fn token_stream(
+        &self,
+        body_only: bool,
+        type_attributes: Option<&[syn::Attribute]>,
+    ) -> impl ToTokens {
         let name = Ident::new(&self.name, Span::call_site());
-        let messages_block = self.messages_block();
-        let services_block = self.services_block();
-        let actions_block = self.actions_block();
+        let messages_block = self.messages_block(type_attributes);
+        let services_block = self.services_block(type_attributes);
+        let actions_block = self.actions_block(type_attributes);
 
         let body = quote! {
             #messages_block

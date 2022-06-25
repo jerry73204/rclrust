@@ -121,9 +121,13 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn token_stream_with_mod(&self, namespace: &str) -> impl ToTokens {
+    pub fn token_stream_with_mod(
+        &self,
+        namespace: &str,
+        type_attributes: Option<&[syn::Attribute]>,
+    ) -> impl ToTokens {
         let mod_name = format_ident!("_{}", self.name.to_snake_case());
-        let inner = self.token_stream(namespace);
+        let inner = self.token_stream(namespace, type_attributes);
         quote! {
             pub use #mod_name::*;
             mod #mod_name {
@@ -132,12 +136,22 @@ impl Message {
         }
     }
 
-    pub fn token_stream(&self, namespace: &str) -> impl ToTokens {
+    pub fn token_stream(
+        &self,
+        namespace: &str,
+        type_attributes: Option<&[syn::Attribute]>,
+    ) -> impl ToTokens {
+        let type_attributes = {
+            let type_attributes = type_attributes.into_iter().flatten();
+            let type_attributes = quote! { #(#type_attributes)* };
+            type_attributes
+        };
+
         let rust_type = format_ident!("{}", self.name);
         // let raw_type = format_ident!("{}_Raw", self.name);
         // let raw_ref_type = format_ident!("{}_RawRef", self.name);
 
-        let func_prefix = format!("{}__{}__{}", self.package, namespace, self.name);
+        // let func_prefix = format!("{}__{}__{}", self.package, namespace, self.name);
 
         // let typesupport_c_lib = format!("{}__rosidl_typesupport_c", self.package);
         // let type_supprt_func = format_ident!(
@@ -188,6 +202,7 @@ impl Message {
 
             #[allow(non_camel_case_types)]
             #[derive(::std::fmt::Debug, ::std::clone::Clone, ::std::cmp::PartialEq)]
+            #type_attributes
             pub struct #rust_type {
                 #(#rust_type_def_inner)*
             }

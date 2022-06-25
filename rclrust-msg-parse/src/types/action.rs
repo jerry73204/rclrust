@@ -132,9 +132,13 @@ impl Action {
         }
     }
 
-    pub fn token_stream_with_mod(&self, namespace: &str) -> impl ToTokens {
+    pub fn token_stream_with_mod(
+        &self,
+        namespace: &str,
+        type_attributes: Option<&[syn::Attribute]>,
+    ) -> impl ToTokens {
         let mod_name = format_ident!("_{}", self.name.to_snake_case());
-        let inner = self.token_stream(namespace);
+        let inner = self.token_stream(namespace, type_attributes);
         quote! {
             pub use #mod_name::*;
             mod #mod_name {
@@ -143,7 +147,11 @@ impl Action {
         }
     }
 
-    pub fn token_stream(&self, namespace: &str) -> impl ToTokens {
+    pub fn token_stream(
+        &self,
+        namespace: &str,
+        type_attributes: Option<&[syn::Attribute]>,
+    ) -> impl ToTokens {
         let action_type = format_ident!("{}", self.name);
         let goal_type = format_ident!("{}_Goal", self.name);
         let result_type = format_ident!("{}_Result", self.name);
@@ -160,12 +168,24 @@ impl Action {
         //     self.name
         // );
 
-        let goal_body = self.goal.token_stream(namespace);
-        let result_body = self.result.token_stream(namespace);
-        let feedback_body = self.feedback.token_stream(namespace);
-        let send_goal_body = self.send_goal_srv().token_stream(namespace);
-        let get_result_body = self.get_result_srv().token_stream(namespace);
-        let feedback_message_body = self.feedback_message_msg().token_stream(namespace);
+        let goal_body = self.goal.token_stream(namespace, type_attributes);
+        let result_body = self.result.token_stream(namespace, type_attributes);
+        let feedback_body = self.feedback.token_stream(namespace, type_attributes);
+        let send_goal_body = self
+            .send_goal_srv()
+            .token_stream(namespace, type_attributes);
+        let get_result_body = self
+            .get_result_srv()
+            .token_stream(namespace, type_attributes);
+        let feedback_message_body = self
+            .feedback_message_msg()
+            .token_stream(namespace, type_attributes);
+
+        let type_attributes = {
+            let type_attributes = type_attributes.into_iter().flatten();
+            let type_attributes = quote! { #(#type_attributes)* };
+            type_attributes
+        };
 
         quote! {
             // use ::std::os::raw::c_void;
@@ -179,6 +199,7 @@ impl Action {
 
             #[allow(non_camel_case_types)]
             #[derive(::std::fmt::Debug)]
+            #type_attributes
             pub struct #action_type;
 
             // #[link(name = #typesupport_c_lib)]
