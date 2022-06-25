@@ -14,5 +14,5 @@ categories = ["science::robotics"]
 keywords = ["ros2"]
 
 [dependencies]
-array-init = "2.0"
-widestring = "0.4"
+array-init = "2.0.1"
+widestring = "1.0.1"
