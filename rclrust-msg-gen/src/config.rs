@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     env,
     path::{Path, PathBuf},
 };
@@ -20,7 +20,7 @@ pub struct CompileConfig {
     pub(crate) ament_prefix_paths: Vec<PathBuf>,
     pub(crate) exclude_packages: HashSet<String>,
     pub(crate) output_dir: PathBuf,
-    pub(crate) type_attributes: Vec<syn::Attribute>,
+    pub(crate) type_attributes: HashMap<MsgPath, Vec<syn::Attribute>>,
 }
 
 impl CompileConfig {
@@ -32,7 +32,7 @@ impl CompileConfig {
             exclude_packages: HashSet::new(),
             link_rpath: false,
             emit_build_script: false,
-            type_attributes: vec![],
+            type_attributes: HashMap::new(),
         }
     }
 
@@ -47,7 +47,7 @@ impl CompileConfig {
                 .collect(),
             link_rpath: true,
             emit_build_script: true,
-            type_attributes: vec![],
+            type_attributes: HashMap::new(),
         }
     }
 
@@ -115,12 +115,17 @@ impl CompileConfig {
         self
     }
 
-    pub fn type_attributes<A>(mut self, attributes: A) -> Result<Self>
+    pub fn type_attributes<P, A>(mut self, path: P, attributes: A) -> Result<Self>
     where
+        P: AsRef<str>,
         A: AsRef<str>,
     {
+        let path: MsgPath = path.as_ref().parse()?;
         let attrs: TypeAttributes = syn::parse_str(attributes.as_ref())?;
-        self.type_attributes.extend(attrs.attrs);
+        self.type_attributes
+            .entry(path)
+            .or_insert_with(|| vec![])
+            .extend(attrs.attrs);
         Ok(self)
     }
 

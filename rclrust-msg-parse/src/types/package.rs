@@ -1,9 +1,5 @@
 use std::path::PathBuf;
 
-use proc_macro2::Span;
-use quote::{quote, ToTokens};
-use syn::Ident;
-
 use crate::types::{Action, Message, Service};
 
 #[derive(Debug, Clone)]
@@ -28,87 +24,6 @@ impl Package {
 
     pub fn is_empty(&self) -> bool {
         self.msgs.is_empty() && self.srvs.is_empty() && self.actions.is_empty()
-    }
-
-    fn messages_block(&self, type_attributes: Option<&[syn::Attribute]>) -> impl ToTokens {
-        if self.msgs.is_empty() {
-            quote! {
-                // empty msg
-            }
-        } else {
-            let items = self
-                .msgs
-                .iter()
-                .map(|v| v.token_stream_with_mod("msg", type_attributes));
-            quote! {
-                pub mod msg {
-                    #(#items)*
-                }  // msg
-            }
-        }
-    }
-
-    fn services_block(&self, type_attributes: Option<&[syn::Attribute]>) -> impl ToTokens {
-        if self.srvs.is_empty() {
-            quote! {
-                // empty srv
-            }
-        } else {
-            let items = self
-                .srvs
-                .iter()
-                .map(|v| v.token_stream_with_mod("srv", type_attributes));
-            quote! {
-                pub mod srv {
-                    #(#items)*
-                }  // srv
-            }
-        }
-    }
-
-    fn actions_block(&self, type_attributes: Option<&[syn::Attribute]>) -> impl ToTokens {
-        if self.actions.is_empty() {
-            quote! {
-                // empty srv
-            }
-        } else {
-            let items = self
-                .actions
-                .iter()
-                .map(|v| v.token_stream_with_mod("action", type_attributes));
-            quote! {
-                pub mod action {
-                    #(#items)*
-                }  // action
-            }
-        }
-    }
-
-    pub fn token_stream(
-        &self,
-        body_only: bool,
-        type_attributes: Option<&[syn::Attribute]>,
-    ) -> impl ToTokens {
-        let name = Ident::new(&self.name, Span::call_site());
-        let messages_block = self.messages_block(type_attributes);
-        let services_block = self.services_block(type_attributes);
-        let actions_block = self.actions_block(type_attributes);
-
-        let body = quote! {
-            #messages_block
-            #services_block
-            #actions_block
-        };
-
-        if body_only {
-            body
-        } else {
-            quote! {
-                pub mod #name {
-                    #body
-                }
-            }
-        }
     }
 }
 

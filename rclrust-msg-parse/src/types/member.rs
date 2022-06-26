@@ -1,5 +1,3 @@
-use quote::{quote, ToTokens};
-
 use super::{primitives::*, sequences::*};
 
 macro_rules! define_enum_from {
@@ -19,94 +17,6 @@ pub enum MemberType {
     Array(Array),
     Sequence(Sequence),
     BoundedSequence(BoundedSequence),
-}
-
-impl MemberType {
-    pub fn type_tokens(&self, package: &str) -> impl ToTokens {
-        match self {
-            Self::NestableType(t) => {
-                let token = t.type_tokens(package);
-                quote! { #token }
-            }
-            Self::Array(t) => {
-                let token = t.type_tokens(package);
-                quote! { #token }
-            }
-            Self::Sequence(t) => {
-                let token = t.type_tokens(package);
-                quote! { #token }
-            }
-            Self::BoundedSequence(t) => {
-                let token = t.type_tokens(package);
-                quote! { #token }
-            }
-        }
-    }
-
-    pub fn raw_type_tokens(&self, package: &str) -> impl ToTokens {
-        match self {
-            Self::NestableType(t) => {
-                let token = t.raw_type_tokens(package);
-                quote! { #token }
-            }
-            Self::Array(t) => {
-                let token = t.raw_type_tokens(package);
-                quote! { #token }
-            }
-            Self::Sequence(t) => {
-                let token = t.raw_type_tokens(package);
-                quote! { #token }
-            }
-            Self::BoundedSequence(t) => {
-                let token = t.raw_type_tokens(package);
-                quote! { #token }
-            }
-        }
-    }
-
-    pub fn raw_ref_type_tokens(&self, package: &str) -> impl ToTokens {
-        match self {
-            Self::NestableType(t) => {
-                let token = t.raw_ref_type_tokens(package);
-                quote! { #token }
-            }
-            Self::Array(t) => {
-                let token = t.raw_ref_type_tokens(package);
-                quote! { #token }
-            }
-            Self::Sequence(t) => {
-                let token = t.raw_ref_type_tokens(package);
-                quote! { #token }
-            }
-            Self::BoundedSequence(t) => {
-                let token = t.raw_ref_type_tokens(package);
-                quote! { #token }
-            }
-        }
-    }
-
-    pub fn value_tokens(&self, default: &[String]) -> impl ToTokens {
-        match self {
-            Self::NestableType(t) => {
-                let token = t.value_tokens(&default[0]);
-                quote! { #token }
-            }
-            Self::Array(t) => {
-                assert_eq!(default.len(), t.size);
-                let tokens = default.iter().map(|v| t.value_type.value_tokens(v));
-                quote! { [#(#tokens,)*] }
-            }
-            Self::Sequence(t) => {
-                let tokens = default.iter().map(|v| t.value_type.value_tokens(v));
-                quote! { vec![#(#tokens,)*] }
-            }
-            Self::BoundedSequence(t) => {
-                assert!(default.len() <= t.max_size);
-                let tokens = default.iter().map(|v| t.value_type.value_tokens(v));
-                quote! { vec![#(#tokens,)*] }
-            }
-        }
-    }
 }
 
 define_enum_from!(MemberType, NestableType, Self::NestableType);

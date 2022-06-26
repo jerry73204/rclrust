@@ -143,7 +143,7 @@ impl FFIFromRust for OwnedFFIWString {
     type From = U16String;
 
     unsafe fn from_rust(string: &Self::From) -> Self {
-        let cstring = U16CString::new(string.clone()).expect("U16CString::new failed");
+        let cstring = U16CString::from_ustr(string.clone()).expect("U16CString::new failed");
         let len = cstring.len();
         Self {
             data: cstring.into_raw(),

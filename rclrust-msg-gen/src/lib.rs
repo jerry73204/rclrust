@@ -7,6 +7,7 @@
 
 pub mod compiler;
 pub mod config;
+mod generator;
 mod msg_path;
 mod parse;
 

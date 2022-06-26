@@ -1,5 +1,3 @@
-use quote::{quote, ToTokens};
-
 use super::{
     primitives::{BasicType, GenericUnboundedString, PrimitiveType},
     sequences::PrimitiveArray,
@@ -20,36 +18,6 @@ macro_rules! define_enum_from {
 pub enum ConstantType {
     PrimitiveType(PrimitiveType),
     PrimitiveArray(PrimitiveArray),
-}
-
-impl ConstantType {
-    pub fn type_tokens(&self) -> impl ToTokens {
-        match self {
-            ConstantType::PrimitiveType(t) => {
-                let token = t.type_tokens();
-                quote! { #token }
-            }
-            ConstantType::PrimitiveArray(t) => {
-                let token = t.type_tokens();
-                quote! { #token }
-            }
-        }
-    }
-
-    pub fn value_tokens(&self, values: &[String]) -> impl ToTokens {
-        match self {
-            ConstantType::PrimitiveType(t) => {
-                assert_eq!(values.len(), 1);
-                let token = t.value_tokens(&values[0]);
-                quote! { #token }
-            }
-            ConstantType::PrimitiveArray(t) => {
-                assert_eq!(values.len(), t.size);
-                let tokens = values.iter().map(|v| t.value_type.value_tokens(v));
-                quote! { [#(#tokens,)*] }
-            }
-        }
-    }
 }
 
 define_enum_from!(ConstantType, PrimitiveType, Self::PrimitiveType);

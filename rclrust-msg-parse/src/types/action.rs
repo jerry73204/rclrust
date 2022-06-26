@@ -1,6 +1,3 @@
-use heck::ToSnakeCase as _;
-use quote::{format_ident, quote, ToTokens};
-
 use super::{primitives::*, Member, Message, Service};
 
 /// An action definition
@@ -19,7 +16,7 @@ pub struct Action {
 }
 
 impl Action {
-    fn send_goal_srv(&self) -> Service {
+    pub fn send_goal_srv(&self) -> Service {
         let common = format!("{}_SendGoal", self.name);
 
         let request = Message {
@@ -71,7 +68,7 @@ impl Action {
         }
     }
 
-    fn get_result_srv(&self) -> Service {
+    pub fn get_result_srv(&self) -> Service {
         let common = format!("{}_GetResult", self.name);
 
         let request = Message {
@@ -111,7 +108,7 @@ impl Action {
         }
     }
 
-    fn feedback_message_msg(&self) -> Message {
+    pub fn feedback_message_msg(&self) -> Message {
         Message {
             package: self.package.clone(),
             name: format!("{}_FeedbackMessage", self.name),
@@ -129,134 +126,6 @@ impl Action {
                 },
             ],
             constants: vec![],
-        }
-    }
-
-    pub fn token_stream_with_mod(
-        &self,
-        namespace: &str,
-        type_attributes: Option<&[syn::Attribute]>,
-    ) -> impl ToTokens {
-        let mod_name = format_ident!("_{}", self.name.to_snake_case());
-        let inner = self.token_stream(namespace, type_attributes);
-        quote! {
-            pub use #mod_name::*;
-            mod #mod_name {
-                #inner
-            }
-        }
-    }
-
-    pub fn token_stream(
-        &self,
-        namespace: &str,
-        type_attributes: Option<&[syn::Attribute]>,
-    ) -> impl ToTokens {
-        let action_type = format_ident!("{}", self.name);
-        let goal_type = format_ident!("{}_Goal", self.name);
-        let result_type = format_ident!("{}_Result", self.name);
-        let feedback_type = format_ident!("{}_Feedback", self.name);
-        let send_goal_type = format_ident!("{}_SendGoal", self.name);
-        let get_result_type = format_ident!("{}_GetResult", self.name);
-        let feeback_message_type = format_ident!("{}_FeedbackMessage", self.name);
-
-        // let typesupport_c_lib = format!("{}__rosidl_typesupport_c", self.package);
-        // let type_supprt_func = format_ident!(
-        //     "rosidl_typesupport_c__get_action_type_support_handle__{}__{}__{}",
-        //     self.package,
-        //     namespace,
-        //     self.name
-        // );
-
-        let goal_body = self.goal.token_stream(namespace, type_attributes);
-        let result_body = self.result.token_stream(namespace, type_attributes);
-        let feedback_body = self.feedback.token_stream(namespace, type_attributes);
-        let send_goal_body = self
-            .send_goal_srv()
-            .token_stream(namespace, type_attributes);
-        let get_result_body = self
-            .get_result_srv()
-            .token_stream(namespace, type_attributes);
-        let feedback_message_body = self
-            .feedback_message_msg()
-            .token_stream(namespace, type_attributes);
-
-        let type_attributes = {
-            let type_attributes = type_attributes.into_iter().flatten();
-            let type_attributes = quote! { #(#type_attributes)* };
-            type_attributes
-        };
-
-        quote! {
-            // use ::std::os::raw::c_void;
-
-            pub use self::goal::*;
-            pub use self::result::*;
-            pub use self::feedback::*;
-            pub use self::send_goal::*;
-            pub use self::get_result::*;
-            pub use self::feedback_message::*;
-
-            #[allow(non_camel_case_types)]
-            #[derive(::std::fmt::Debug)]
-            #type_attributes
-            pub struct #action_type;
-
-            // #[link(name = #typesupport_c_lib)]
-            // extern "C" {
-            //     fn #type_supprt_func() -> *const c_void;
-            // }
-
-            impl ::rclrust_msg_types::ActionT for #action_type {
-                type Goal = #goal_type;
-                type Result = #result_type;
-                type Feedback = #feedback_type;
-                type SendGoal = #send_goal_type;
-                type GetResult = #get_result_type;
-                type FeedbackMessage = #feeback_message_type;
-
-                // fn type_support() -> *const c_void {
-                //     unsafe {
-                //         #type_supprt_func()
-                //     }
-                // }
-            }
-
-            mod goal {
-                #goal_body
-            }  // mod goal
-
-            mod result {
-                #result_body
-            }  // mod result
-
-            mod feedback {
-                #feedback_body
-            }  // mod feedback
-
-            mod send_goal {
-                #send_goal_body
-            }  // mod send_goal
-
-            mod get_result {
-                #get_result_body
-            }  // mod get_result
-
-            mod feedback_message {
-                #feedback_message_body
-            }  // mod feedback_message
-
-            // #[cfg(test)]
-            // mod test {
-            //     use super::*;
-            //     use ::rclrust_msg_types::ActionT;
-
-            //     #[test]
-            //     fn test_type_support() {
-            //         let ptr = #action_type::type_support();
-            //         assert!(!ptr.is_null());
-            //     }
-            // }
         }
     }
 }

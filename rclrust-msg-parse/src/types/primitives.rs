@@ -1,8 +1,5 @@
 use std::fmt;
 
-use proc_macro2::{Ident, Literal, Span};
-use quote::{format_ident, quote, ToTokens};
-
 macro_rules! define_enum_from {
     ($into_t:ty, $from_t:ty, $path:path) => {
         impl From<$from_t> for $into_t {
@@ -75,81 +72,11 @@ impl BasicType {
             }
         })
     }
-
-    pub fn type_tokens(self) -> impl ToTokens {
-        match self {
-            Self::I8 => quote! { i8 },
-            Self::I16 => quote! { i16 },
-            Self::I32 => quote! { i32 },
-            Self::I64 => quote! { i64 },
-            Self::U8 | Self::Char | Self::Byte => quote! { u8 },
-            Self::U16 => quote! { u16 },
-            Self::U32 => quote! { u32 },
-            Self::U64 => quote! { u64 },
-            Self::F32 => quote! { f32 },
-            Self::F64 => quote! { f64 },
-            Self::Bool => quote! { bool },
-        }
-    }
-
-    fn value_literal(self, value: &str) -> Option<Literal> {
-        Some(match self {
-            Self::I8 => Literal::i8_suffixed(value.parse().unwrap()),
-            Self::I16 => Literal::i16_suffixed(value.parse().unwrap()),
-            Self::I32 => Literal::i32_suffixed(value.parse().unwrap()),
-            Self::I64 => Literal::i64_suffixed(value.parse().unwrap()),
-            Self::U8 | Self::Char | Self::Byte => Literal::u8_suffixed(value.parse().unwrap()),
-            Self::U16 => Literal::u16_suffixed(value.parse().unwrap()),
-            Self::U32 => Literal::u32_suffixed(value.parse().unwrap()),
-            Self::U64 => Literal::u64_suffixed(value.parse().unwrap()),
-            Self::F32 => Literal::f32_suffixed(value.parse().unwrap()),
-            Self::F64 => Literal::f64_suffixed(value.parse().unwrap()),
-            // bool is Ident not Literal!
-            Self::Bool => return None,
-        })
-    }
-
-    fn value_tokens(self, value: &str) -> impl ToTokens {
-        match self {
-            Self::Bool => match value {
-                "true" => quote! { true },
-                "false" => quote! { false },
-                _ => unreachable!(),
-            },
-            _ => {
-                let value = self.value_literal(value).unwrap();
-                quote! { #value }
-            }
-        }
-    }
 }
 
 /// A type identified by the name
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedType(pub String);
-
-impl NamedType {
-    fn type_tokens(&self, package: &str) -> impl ToTokens {
-        let package = Ident::new(package, Span::call_site());
-        let namespace = Ident::new("msg", Span::call_site());
-        let name = Ident::new(&self.0, Span::call_site());
-        quote! { crate::#package::#namespace::#name }
-    }
-
-    fn raw_type_tokens(&self, package: &str) -> impl ToTokens {
-        let package = Ident::new(package, Span::call_site());
-        let namespace = Ident::new("msg", Span::call_site());
-        let name = format_ident!("{}_Raw", self.0);
-        quote! { crate::#package::#namespace::#name }
-    }
-
-    fn raw_ref_type_tokens(&self, package: &str) -> impl ToTokens {
-        let package = Ident::new(package, Span::call_site());
-        let namespace = Ident::new("msg", Span::call_site());
-        let name = format_ident!("{}_RawRef", self.0);
-        quote! { crate::#package::#namespace::#name }
-    }
-}
 
 impl fmt::Display for NamedType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -170,29 +97,6 @@ pub struct NamespacedType {
     pub name: String,
 }
 
-impl NamespacedType {
-    fn type_tokens(&self) -> impl ToTokens {
-        let package = Ident::new(&self.package, Span::call_site());
-        let namespace = Ident::new(&self.namespace, Span::call_site());
-        let name = Ident::new(&self.name, Span::call_site());
-        quote! { crate::#package::#namespace::#name }
-    }
-
-    fn raw_type_tokens(&self) -> impl ToTokens {
-        let package = Ident::new(&self.package, Span::call_site());
-        let namespace = Ident::new(&self.namespace, Span::call_site());
-        let name = format_ident!("{}_Raw", self.name);
-        quote! { crate::#package::#namespace::#name }
-    }
-
-    fn raw_ref_type_tokens(&self) -> impl ToTokens {
-        let package = Ident::new(&self.package, Span::call_site());
-        let namespace = Ident::new(&self.namespace, Span::call_site());
-        let name = format_ident!("{}_RawRef", self.name);
-        quote! { crate::#package::#namespace::#name }
-    }
-}
-
 impl fmt::Display for NamespacedType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}/{}/{}", self.package, self.namespace, self.name)
@@ -209,42 +113,8 @@ pub enum GenericString {
 }
 
 impl GenericString {
-    const fn is_wide(self) -> bool {
+    pub const fn is_wide(self) -> bool {
         matches!(self, Self::WString | Self::BoundedWString(_))
-    }
-
-    fn type_tokens(self) -> impl ToTokens {
-        if self.is_wide() {
-            quote! { ::rclrust_msg_types::widestring::U16String }
-        } else {
-            quote! { ::std::string::String }
-        }
-    }
-
-    fn raw_type_tokens(self) -> impl ToTokens {
-        if self.is_wide() {
-            quote! { ::rclrust_msg_types::FFIWString }
-        } else {
-            quote! { ::rclrust_msg_types::FFIString }
-        }
-    }
-
-    fn raw_ref_type_tokens(self) -> impl ToTokens {
-        if self.is_wide() {
-            quote! { ::rclrust_msg_types::OwnedFFIWString }
-        } else {
-            quote! { ::rclrust_msg_types::OwnedFFIString }
-        }
-    }
-
-    fn value_tokens(self, value: &str) -> impl ToTokens {
-        // TODO: Assertion
-        let value = Literal::string(value);
-        if self.is_wide() {
-            quote! { ::rclrust_msg_types::widestring::U16String::from_str(#value) }
-        } else {
-            quote! { ::std::string::String::from(#value) }
-        }
     }
 }
 
@@ -264,17 +134,6 @@ pub enum GenericUnboundedString {
     WString,
 }
 
-impl GenericUnboundedString {
-    fn type_tokens(self) -> impl ToTokens {
-        quote! { &'static str }
-    }
-
-    fn value_tokens(self, value: &str) -> impl ToTokens {
-        let value = Literal::string(value);
-        quote! { #value }
-    }
-}
-
 /// A type which can be used inside nested types
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NestableType {
@@ -282,85 +141,6 @@ pub enum NestableType {
     NamedType(NamedType),
     NamespacedType(NamespacedType),
     GenericString(GenericString),
-}
-
-impl NestableType {
-    pub fn type_tokens(&self, package: &str) -> impl ToTokens {
-        match self {
-            Self::BasicType(t) => {
-                let token = t.type_tokens();
-                quote! { #token }
-            }
-            Self::NamedType(t) => {
-                let token = t.type_tokens(package);
-                quote! { #token }
-            }
-            Self::NamespacedType(t) => {
-                let token = t.type_tokens();
-                quote! { #token }
-            }
-            Self::GenericString(t) => {
-                let token = t.type_tokens();
-                quote! { #token }
-            }
-        }
-    }
-
-    pub fn raw_type_tokens(&self, package: &str) -> impl ToTokens {
-        match self {
-            Self::BasicType(t) => {
-                let token = t.type_tokens();
-                quote! { #token }
-            }
-            Self::NamedType(t) => {
-                let token = t.raw_type_tokens(package);
-                quote! { #token }
-            }
-            Self::NamespacedType(t) => {
-                let token = t.raw_type_tokens();
-                quote! { #token }
-            }
-            Self::GenericString(t) => {
-                let token = t.raw_type_tokens();
-                quote! { #token }
-            }
-        }
-    }
-
-    pub fn raw_ref_type_tokens(&self, package: &str) -> impl ToTokens {
-        match self {
-            Self::BasicType(t) => {
-                let token = t.type_tokens();
-                quote! { #token }
-            }
-            Self::NamedType(t) => {
-                let token = t.raw_ref_type_tokens(package);
-                quote! { #token }
-            }
-            Self::NamespacedType(t) => {
-                let token = t.raw_ref_type_tokens();
-                quote! { #token }
-            }
-            Self::GenericString(t) => {
-                let token = t.raw_ref_type_tokens();
-                quote! { #token }
-            }
-        }
-    }
-
-    pub fn value_tokens(&self, default: &str) -> impl ToTokens {
-        match self {
-            Self::BasicType(t) => {
-                let token = t.value_tokens(default);
-                quote! { #token }
-            }
-            Self::GenericString(t) => {
-                let token = t.value_tokens(default);
-                quote! { #token }
-            }
-            _ => unreachable!(),
-        }
-    }
 }
 
 define_enum_from!(NestableType, BasicType, Self::BasicType);
@@ -373,34 +153,6 @@ define_enum_from!(NestableType, GenericString, Self::GenericString);
 pub enum PrimitiveType {
     BasicType(BasicType),
     GenericUnboundedString(GenericUnboundedString),
-}
-
-impl PrimitiveType {
-    pub fn type_tokens(self) -> impl ToTokens {
-        match self {
-            Self::BasicType(t) => {
-                let token = t.type_tokens();
-                quote! { #token }
-            }
-            Self::GenericUnboundedString(t) => {
-                let token = t.type_tokens();
-                quote! { #token }
-            }
-        }
-    }
-
-    pub fn value_tokens(self, value: &str) -> impl ToTokens {
-        match self {
-            Self::BasicType(t) => {
-                let token = t.value_tokens(value);
-                quote! { #token }
-            }
-            Self::GenericUnboundedString(t) => {
-                let token = t.value_tokens(value);
-                quote! { #token }
-            }
-        }
-    }
 }
 
 define_enum_from!(PrimitiveType, BasicType, Self::BasicType);

@@ -5,7 +5,7 @@ use itertools::{chain, Itertools as _};
 use quote::quote;
 use rclrust_msg_parse::{parser::package::AmentPrefix, types::Library};
 
-use crate::config::CompileConfig;
+use crate::{config::CompileConfig, generator::Generator};
 
 pub struct Compiler {
     pub(crate) aments: Vec<AmentPrefix>,
@@ -35,7 +35,7 @@ impl Compiler {
             .aments
             .iter()
             .flat_map(|ament| &ament.packages)
-            .map(|pkg| pkg.token_stream(false, Some(&self.config.type_attributes)));
+            .map(|pkg| Generator::new(&self.config, pkg).token_stream(false));
 
         let content = quote! {
             #(#mods)*
